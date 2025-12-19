@@ -5,7 +5,7 @@ import os
 
 import requests
 import weakref
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union, Tuple
 
 from .ontology import OntologyNamespace
 
@@ -29,17 +29,29 @@ class GraphioClient:
         edits.commit()
     """
 
-    def __init__(self, base_url: str = os.getenv("GRAPHIO_BASE_URL", "http://localhost:8080"), timeout: int = 30):
+    def __init__(
+            self,
+            base_url: str = os.getenv("GRAPHIO_BASE_URL", "http://localhost:8080"),
+            timeout: Union[int, Tuple[int, int]] = 30
+    ):
         """
         클라이언트 초기화
 
         Args:
             base_url: API 서버의 base URL (기본값: http://localhost:8080)
-            timeout: 요청 타임아웃 시간(초), 기본값 30초
+            timeout: 요청 타임아웃 시간(초) 또는 (연결 타임아웃, 읽기 타임아웃) 튜플
+                    기본값 30초. int인 경우 (5초, timeout초)로 설정되어
+                    서버가 죽어있을 때 빠르게 실패합니다.
         """
         self.base_url = base_url.rstrip('/')
         self.api_base = f"{self.base_url}/graphio/v1"
-        self.timeout = timeout
+
+        # timeout 처리: int면 (connect_timeout, read_timeout) 튜플로 변환
+        if isinstance(timeout, int):
+            # 연결 타임아웃 5초, 읽기 타임아웃은 사용자 지정값
+            self.timeout: Tuple[int, int] = (5, timeout)
+        else:
+            self.timeout = timeout
         self._session: Optional[requests.Session] = None
         self._closed = False
         self.ontology = OntologyNamespace(self)
@@ -102,6 +114,11 @@ class GraphioClient:
 
             return result.get("data", [])
 
+        except requests.exceptions.Timeout as e:
+            raise Exception(
+                f"ObjectType 목록 조회 타임아웃 "
+                f"(timeout={self._format_timeout()}): {str(e)}"
+            ) from e
         except requests.exceptions.RequestException as e:
             raise Exception(f"ObjectType 목록 조회 실패: {str(e)}") from e
 
@@ -122,6 +139,11 @@ class GraphioClient:
             self._check_response(result, "fetch object type")
             return result.get("data", {})
 
+        except requests.exceptions.Timeout as e:
+            raise Exception(
+                f"ObjectType 조회 타임아웃 "
+                f"(timeout={self._format_timeout()}): {str(e)}"
+            ) from e
         except requests.exceptions.RequestException as e:
             raise Exception(f"ObjectType 조회 실패: {str(e)}") from e
 
@@ -138,6 +160,11 @@ class GraphioClient:
 
             return result.get("data", [])
 
+        except requests.exceptions.Timeout as e:
+            raise Exception(
+                f"ObjectType Properties 조회 타임아웃 "
+                f"(timeout={self._format_timeout()}): {str(e)}"
+            ) from e
         except requests.exceptions.RequestException as e:
             raise Exception(f"ObjectType Properties 조회 실패: {str(e)}") from e
 
@@ -171,8 +198,115 @@ class GraphioClient:
 
             return result.get("data", [])
 
+        except requests.exceptions.Timeout as e:
+            raise Exception(
+                f"데이터 조회 타임아웃 "
+                f"(timeout={self._format_timeout()}): {str(e)}"
+            ) from e
         except requests.exceptions.RequestException as e:
             raise Exception(f"데이터 조회 실패: {str(e)}") from e
+
+    # ========================================================================
+    # Typed Object/Link API (insert, update, delete)
+    # ========================================================================
+
+    def insert(self, obj):
+        """
+        Typed Object 또는 Link를 생성
+        
+        Args:
+            obj: TypedObject 또는 TypedLink 인스턴스
+            
+        Returns:
+            생성 결과
+            
+        Example:
+            from graphio_sdk.ontology.objects import Employee
+            
+            emp = Employee(
+                element_id="e-1",
+                properties={"name": "John", "age": 30}
+            )
+            client.insert(emp)
+        """
+        contract = obj.to_contract()
+        messages = [contract]
+        return self._execute_create(messages)
+
+    def update(self, obj):
+        """
+        Typed Object 또는 Link를 업데이트
+        
+        Args:
+            obj: TypedObject 또는 TypedLink 인스턴스 (element_id 필수)
+            
+        Returns:
+            업데이트 결과
+            
+        Example:
+            from graphio_sdk.ontology.objects import Employee
+            
+            emp = Employee(
+                element_id="e-1",
+                properties={"name": "John", "age": 31}
+            )
+            client.update(emp)
+        """
+        if not obj.element_id:
+            raise ValueError("update()를 사용하려면 element_id가 필요합니다.")
+        
+        contract = obj.to_contract()
+        messages = [contract]
+        return self._execute_update(messages)
+
+    def delete(self, obj):
+        """
+        Typed Object 또는 Link를 삭제
+        
+        Args:
+            obj: TypedObject 또는 TypedLink 인스턴스 (element_id 필수)
+            
+        Returns:
+            삭제 결과
+            
+        Example:
+            from graphio_sdk.ontology.objects import Employee
+            
+            emp = Employee(element_id="e-1")
+            client.delete(emp)
+        """
+        if not obj.element_id:
+            raise ValueError("delete()를 사용하려면 element_id가 필요합니다.")
+        
+        contract = obj.to_contract()
+        messages = [contract]
+        return self._execute_delete(messages)
+
+    def _execute_delete(self, messages: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """삭제 실행"""
+        url = f"{self.api_base}/ontology-workflow/object-set/delete"
+
+        try:
+            response = self._get_session().post(
+                url,
+                json=messages,
+                headers={"Content-Type": "application/json"},
+                timeout=self.timeout
+            )
+            response.raise_for_status()
+
+            result = response.json()
+            self._check_response(result, "delete")
+
+            return result
+
+        except requests.exceptions.Timeout as e:
+            raise Exception(
+                f"객체 삭제 타임아웃 "
+                f"(timeout={self._format_timeout()}): {str(e)}"
+            ) from e
+        except requests.exceptions.RequestException as e:
+            raise Exception(f"객체 삭제 실패: {str(e)}") from e
 
     # ========================================================================
     # ObjectSet 생성/수정 API 호출
@@ -196,6 +330,11 @@ class GraphioClient:
 
             return result
 
+        except requests.exceptions.Timeout as e:
+            raise Exception(
+                f"객체 생성 타임아웃 "
+                f"(timeout={self._format_timeout()}): {str(e)}"
+            ) from e
         except requests.exceptions.RequestException as e:
             raise Exception(f"객체 생성 실패: {str(e)}") from e
 
@@ -217,12 +356,24 @@ class GraphioClient:
 
             return result
 
+        except requests.exceptions.Timeout as e:
+            raise Exception(
+                f"객체 업데이트 타임아웃 "
+                f"(timeout={self._format_timeout()}): {str(e)}"
+            ) from e
         except requests.exceptions.RequestException as e:
             raise Exception(f"객체 업데이트 실패: {str(e)}") from e
 
     # ========================================================================
     # 유틸리티
     # ========================================================================
+
+    def _format_timeout(self) -> str:
+        """timeout 값을 문자열로 포맷팅"""
+        if isinstance(self.timeout, tuple):
+            connect, read = self.timeout
+            return f"연결={connect}초, 읽기={read}초"
+        return f"{self.timeout}초"
 
     def _check_response(self, response: Dict[str, Any], operation: str):
         """응답 검증"""
