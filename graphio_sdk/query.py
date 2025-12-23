@@ -30,6 +30,7 @@ class ObjectSetQuery:
 
         Args:
             *fields: 조회할 필드명들. '*'를 사용하면 모든 필드 선택
+                    아무것도 입력하지 않으면 자동으로 모든 필드('*') 선택
 
         Returns:
             자기 자신 (메서드 체이닝용)
@@ -37,10 +38,12 @@ class ObjectSetQuery:
         Example:
             query.select("name", "age")
             query.select("*")  # 모든 필드
+            query.select()  # 모든 필드 (자동으로 '*')
         """
-        if "*" in fields:
+        # 필드가 없거나 '*'이면 자동으로 모든 필드 선택
+        if not fields or "*" in fields:
             self._select_all = True
-            self._select_fields = []  # '*' 선택 시 필드 리스트 초기화
+            self._select_fields = []
         else:
             self._select_all = False
             self._select_fields.extend(fields)

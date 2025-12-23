@@ -51,7 +51,7 @@ def update_unit_xy():
             raise ValueError("'유닛' ObjectType을 찾을 수 없습니다.")
 
         # 조회 쿼리 구성
-        query = Unit.select('y', 'x')
+        query = Unit.select('side', 'y', 'x')
 
         # 데이터 조회
         units = query.execute()
@@ -72,27 +72,28 @@ def update_unit_xy():
         bounds = (0, 1000)
 
         # 각 유닛의 x, y 값 수정
-        for unit_data in units:
-            if not unit_data['elementId']:
-                print(f"경고: elementId가 없는 레코드를 건너뜁니다: {unit_data}")
+        for unit in units:
+            props = unit.get('properties')
+            if not unit['elementId']:
+                print(f"경고: elementId가 없는 레코드를 건너뜁니다: {unit}")
                 continue
 
-            if unit_data.get('side') == 'ALLY':
+            if props.get('side') == 'ALLY':
                 continue
 
             dx = choice([-1, 1]) * randint(10, 100)  # -100 ~ -10 또는 10 ~ 100
             dy = choice([-1, 1]) * randint(10, 100)
             # 현재 x, y 값 가져오기
-            unit_data['x'] = max(bounds[0], min(bounds[1], unit_data.properties.x + dx))
-            unit_data['y'] = max(bounds[0], min(bounds[1], unit_data.properties.y + dy))
+            props['x'] = max(bounds[0], min(bounds[1], props['x'] + dx))
+            props['y'] = max(bounds[0], min(bounds[1], props['y'] + dy))
 
-            if updated:
-                # 편집 빌더에 업데이트 추가
-                edits.objects.유닛.edit({
-                    "elementId": element_id,
-                    "properties": properties
-                })
-                updated_count += 1
+            # unit_ot ObjectType 클래스를 직접 전달
+            edits.objects(Unit).edit({
+                "elementId": unit['elementId'],
+                "properties": props
+            })
+
+            updated_count += 1
 
         if updated_count == 0:
             print("수정할 데이터가 없습니다.")
@@ -126,7 +127,4 @@ if __name__ == "__main__":
     """
     사용 예제
     """
-    print("\n" + "=" * 80)
-    print("예제 코드는 주석 처리되어 있습니다. 필요에 따라 주석을 해제하여 실행하세요.")
-    print("=" * 80)
     update_unit_xy()

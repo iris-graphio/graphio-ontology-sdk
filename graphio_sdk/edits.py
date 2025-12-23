@@ -54,16 +54,29 @@ class ObjectTypeEditor:
 
     def create(
             self,
-            properties: Optional[Dict[str, Any]] = None,
+            new_object: Union[Dict[str, Any], EditableObject],
             **kwargs
     ) -> EditableObject:
         """새 객체 생성"""
-        props = properties or {}
-        props.update(kwargs)
+        if isinstance(new_object, dict):
+            element_id = new_object.get("elementId")
+            properties = new_object.get("properties", {})
+            # properties 키가 없으면 전체 딕셔너리를 properties로 사용
+            # (기존 호환성)
+            if ("properties" not in new_object and
+                    "elementId" not in new_object):
+                properties = new_object
+            properties.update(kwargs)
+        elif isinstance(new_object, EditableObject):
+            element_id = new_object.element_id
+            properties = new_object.get_properties()
+        else:
+            raise ValueError("new_object는 dict 또는 EditableObject여야 합니다.")
 
         obj = EditableObject(
             object_type_id=self.object_type_class._object_type_id,
-            properties=props
+            properties=properties,
+            element_id=element_id
         )
 
         self.edits_builder._add_create(obj)
@@ -99,11 +112,60 @@ class ObjectsAccessor:
     def __init__(self, edits_builder: 'OntologyEditsBuilder', object_types: Dict[str, type]):
         self._edits_builder = edits_builder
         self._object_types = object_types
+        self._dynamic_attributes: Dict[str, type] = {}  # 동적으로 할당된 ObjectType 클래스들
 
     def __getattr__(self, name: str) -> ObjectTypeEditor:
+        # 1. 먼저 이름으로 등록된 ObjectType 찾기
         if name in self._object_types:
             return ObjectTypeEditor(self._object_types[name], self._edits_builder)
+        
+        # 2. 동적으로 할당된 ObjectType 클래스 찾기
+        if name in self._dynamic_attributes:
+            return ObjectTypeEditor(self._dynamic_attributes[name], self._edits_builder)
+        
         raise AttributeError(f"ObjectType '{name}'을 찾을 수 없습니다.")
+
+    def __setattr__(self, name: str, value: Any):
+        # 내부 속성은 일반적으로 설정
+        if name.startswith('_') or name in ('_edits_builder', '_object_types', '_dynamic_attributes'):
+            super().__setattr__(name, value)
+            return
+        
+        # ObjectType 클래스를 할당하는 경우
+        from .object_type import ObjectTypeBase
+        if isinstance(value, type) and issubclass(value, ObjectTypeBase):
+            if not hasattr(self, '_dynamic_attributes'):
+                self._dynamic_attributes = {}
+            self._dynamic_attributes[name] = value
+            return
+        
+        # 일반 속성 설정
+        super().__setattr__(name, value)
+
+    def __call__(self, object_type_class: type) -> ObjectTypeEditor:
+        """
+        ObjectType 클래스를 직접 전달받아 ObjectTypeEditor 반환
+        
+        Args:
+            object_type_class: ObjectType 클래스 (예: unit_ot)
+            
+        Returns:
+            ObjectTypeEditor 인스턴스
+            
+        Example:
+            unit_ot = client.ontology.get_object_type("유닛")
+            edits.objects(unit_ot).edit({...})
+        """
+        # ObjectTypeBase를 상속받은 클래스인지 확인
+        from .object_type import ObjectTypeBase
+        if not isinstance(object_type_class, type) or not issubclass(object_type_class, ObjectTypeBase):
+            raise ValueError(f"ObjectType 클래스가 아닙니다: {object_type_class}")
+        
+        # _object_type_id가 있는지 확인
+        if not hasattr(object_type_class, '_object_type_id') or not object_type_class._object_type_id:
+            raise ValueError(f"ObjectType 클래스에 _object_type_id가 없습니다: {object_type_class}")
+        
+        return ObjectTypeEditor(object_type_class, self._edits_builder)
 
 
 class OntologyEditsBuilder:

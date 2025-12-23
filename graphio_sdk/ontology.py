@@ -20,6 +20,8 @@ class OntologyNamespace:
         self.client = client
         self._object_types: Dict[str, type] = {}
         self._object_type_id_to_name: Dict[str, str] = {}
+        self._link_types: Dict[str, type] = {}
+        self._link_type_id_to_name: Dict[str, str] = {}
         self._cache_lock = threading.Lock()  # 스레드 안전성
 
     def register_object_type(
@@ -155,12 +157,125 @@ class OntologyNamespace:
         """
         return list(self._object_types.keys())
 
+    def get_link_type(self, name: str) -> Optional[type]:
+        """
+        LinkType 클래스 가져오기 (Lazy Loading)
+
+        캐시에 없으면 자동으로 서버에서 로드합니다.
+
+        Args:
+            name: LinkType 이름
+
+        Returns:
+            LinkType 클래스 또는 None (로드 실패 시)
+        """
+        # 캐시에서 찾기
+        if name in self._link_types:
+            return self._link_types[name]
+
+        # 자동 로드
+        try:
+            return self.load_link_type(name=name)
+        except Exception:
+            # 로드 실패 시 None 반환
+            return None
+
+    def load_link_type(
+            self,
+            link_type_id: Optional[str] = None,
+            name: Optional[str] = None
+    ) -> type:
+        """
+        특정 LinkType을 서버에서 가져와 등록
+
+        Args:
+            link_type_id: LinkType UUID (id 또는 name 중 하나 필수)
+            name: LinkType 이름 (id 또는 name 중 하나 필수)
+
+        Returns:
+            등록된 LinkType 클래스
+        """
+        # name으로 이미 로드된 경우
+        if name and name in self._link_types:
+            return self._link_types[name]
+
+        # id로 이미 로드된 경우
+        if link_type_id and link_type_id in self._link_type_id_to_name:
+            cached_name = self._link_type_id_to_name[link_type_id]
+            return self._link_types[cached_name]
+
+        # 서버에서 로드 (LinkType API가 구현되면 사용)
+        # 현재는 ObjectType과 동일한 구조로 구현
+        if link_type_id:
+            # TODO: LinkType API 구현 시 사용
+            raise NotImplementedError("LinkType API가 아직 구현되지 않았습니다.")
+        elif name:
+            # TODO: LinkType API 구현 시 사용
+            raise NotImplementedError("LinkType API가 아직 구현되지 않았습니다.")
+        else:
+            raise ValueError("link_type_id 또는 name 중 하나는 필수입니다.")
+
+    def register_link_type(
+            self,
+            name: str,
+            link_type_id: str,
+            properties: Optional[List[str]] = None
+    ) -> type:
+        """
+        LinkType 수동 등록
+
+        Args:
+            name: LinkType 이름
+            link_type_id: LinkType UUID
+            properties: 속성 이름 리스트 (선택적)
+
+        Returns:
+            생성된 LinkType 클래스
+        """
+        with self._cache_lock:
+            # 이미 등록된 경우 기존 클래스 반환
+            if name in self._link_types:
+                return self._link_types[name]
+
+            # 동적으로 클래스 생성 (ObjectType과 동일한 구조)
+            cls = type(name, (ObjectTypeBase,), {
+                "_object_type_id": link_type_id,  # LinkType도 동일한 구조 사용
+                "_object_type_name": name,
+                "_client": self.client,
+                "_properties": properties or []
+            })
+
+            # 속성 디스크립터 동적 생성
+            if properties:
+                for prop_name in properties:
+                    setattr(cls, prop_name, PropertyDescriptor(prop_name))
+
+            self._link_types[name] = cls
+            self._link_type_id_to_name[link_type_id] = name
+
+            # links 네임스페이스에 등록
+            setattr(self.links, name, cls)
+
+            return cls
+
+    def list_link_types(self) -> List[str]:
+        """
+        캐시된 LinkType 이름 목록
+
+        Returns:
+            LinkType 이름 리스트
+        """
+        return list(self._link_types.keys())
+
     def clear_cache(self):
-        """캐시된 ObjectType 모두 제거"""
+        """캐시된 ObjectType과 LinkType 모두 제거"""
         with self._cache_lock:
             self._object_types.clear()
             self._object_type_id_to_name.clear()
+            self._link_types.clear()
+            self._link_type_id_to_name.clear()
             self._objects_namespace = type('ObjectsNamespace', (), {})()
+            self._links_namespace = type('LinksNamespace', (), {})()
 
     @property
     def objects(self):
@@ -168,6 +283,13 @@ class OntologyNamespace:
         if not hasattr(self, '_objects_namespace'):
             self._objects_namespace = type('ObjectsNamespace', (), {})()
         return self._objects_namespace
+
+    @property
+    def links(self):
+        """links 네임스페이스 - 동적 속성 접근용"""
+        if not hasattr(self, '_links_namespace'):
+            self._links_namespace = type('LinksNamespace', (), {})()
+        return self._links_namespace
 
     def edits(self) -> OntologyEditsBuilder:
         """편집 세션 시작"""

@@ -182,7 +182,7 @@ class GraphioClient:
         Returns:
             조회된 실제 데이터 리스트
         """
-        url = f"{self.api_base}/ontology-workflow/object-set/select"
+        url = f"{self.api_base}/ontology-workflow/objects/select"
 
         try:
             response = self._get_session().post(
@@ -221,7 +221,7 @@ class GraphioClient:
             생성 결과
             
         Example:
-            from graphio_sdk.ontology.objects import Employee
+            Employee = client.ontology.get_object_type("Employee")
             
             emp = Employee(
                 element_id="e-1",
@@ -244,7 +244,7 @@ class GraphioClient:
             업데이트 결과
             
         Example:
-            from graphio_sdk.ontology.objects import Employee
+            Employee = client.ontology.get_object_type("Employee")
             
             emp = Employee(
                 element_id="e-1",
@@ -270,7 +270,7 @@ class GraphioClient:
             삭제 결과
             
         Example:
-            from graphio_sdk.ontology.objects import Employee
+            Employee = client.ontology.get_object_type("Employee")
             
             emp = Employee(element_id="e-1")
             client.delete(emp)
@@ -284,7 +284,7 @@ class GraphioClient:
 
     def _execute_delete(self, messages: List[Dict[str, Any]]) -> Dict[str, Any]:
         """삭제 실행"""
-        url = f"{self.api_base}/ontology-workflow/object-set/delete"
+        url = f"{self.api_base}/ontology-workflow/objects/delete"
 
         try:
             response = self._get_session().post(
@@ -314,7 +314,7 @@ class GraphioClient:
 
     def _execute_create(self, messages: List[Dict[str, Any]]) -> Dict[str, Any]:
         """생성 실행"""
-        url = f"{self.api_base}/ontology-workflow/object-set/insert"
+        url = f"{self.api_base}/ontology-workflow/objects/insert"
 
         try:
             response = self._get_session().post(
@@ -340,7 +340,7 @@ class GraphioClient:
 
     def _execute_update(self, messages: List[Dict[str, Any]]) -> Dict[str, Any]:
         """업데이트 실행"""
-        url = f"{self.api_base}/ontology-workflow/object-set/update"
+        url = f"{self.api_base}/ontology-workflow/objects/update"
 
         try:
             response = self._get_session().post(

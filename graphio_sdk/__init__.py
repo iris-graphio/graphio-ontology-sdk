@@ -2,11 +2,9 @@
 GraphIO Ontology SDK - Palantir Foundry 스타일 Python 클라이언트
 
 Example:
-    from graphio_sdk import GraphIOClient
+    from graphio_sdk import GraphioClient
 
-    client = GraphIOClient(base_url="http://localhost:8080")
-    client.ontology.load_object_types()
-
+    client = GraphioClient(base_url="http://localhost:8080")
     Employee = client.ontology.get_object_type("Employee")
     employees = Employee.where(Employee.age > 30).select("name", "age").execute()
 """
