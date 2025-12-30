@@ -31,7 +31,7 @@ class GraphioClient:
 
     def __init__(
             self,
-            base_url: str = os.getenv("GRAPHIO_BASE_URL", "http://localhost:8080"),
+            base_url: str = os.getenv("ONTOLOGY_SERVICE", "http://localhost:8080"),
             timeout: Union[int, Tuple[int, int]] = 30
     ):
         """
