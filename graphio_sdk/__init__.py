@@ -22,16 +22,6 @@ from .object_type import ObjectTypeBase
 from .query import ObjectSetQuery
 from .edits import EditableObject, OntologyEditsBuilder
 from .ontology import OntologyNamespace
-from .mq_publisher import (
-    _get_channel,
-    _close_connection,
-    __publish,
-    _publish,
-    _on_task_success,
-    _on_task_failure,
-    _on_dag_run_success,
-    _on_dag_run_failure,
-)
 
 __all__ = [
     "GraphioClient",
@@ -43,12 +33,4 @@ __all__ = [
     "EditableObject",
     "OntologyEditsBuilder",
     "OntologyNamespace",
-    "_get_channel",
-    "_close_connection",
-    "__publish",
-    "_publish",
-    "_on_task_success",
-    "_on_task_failure",
-    "_on_dag_run_success",
-    "_on_dag_run_failure",
 ]
