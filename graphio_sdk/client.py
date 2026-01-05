@@ -2,12 +2,22 @@
 GraphIO Ontology Service 메인 클라이언트 (자동 리소스 관리)
 """
 import os
+import time
+import json
 
 import requests
 import weakref
 from typing import List, Dict, Any, Optional, Union, Tuple
 
 from .ontology import OntologyNamespace
+
+# pika는 optional dependency이므로 import 시도
+try:
+    import pika
+    PIKA_AVAILABLE = True
+except ImportError:
+    PIKA_AVAILABLE = False
+    pika = None
 
 
 class GraphioClient:
@@ -21,7 +31,10 @@ class GraphioClient:
 
         client = GraphIOClient()
         Employee = client.ontology.get_object_type("Employee")
-        employees = Employee.where(Employee.age > 30).select("name", "age").execute()
+        employees = (Employee
+                     .where(Employee.age > 30)
+                     .select("name", "age")
+                     .execute())
 
         # 또는 편집
         edits = client.ontology.edits()
@@ -31,17 +44,39 @@ class GraphioClient:
 
     def __init__(
             self,
-            base_url: str = os.getenv("ONTOLOGY_SERVICE", "http://localhost:8080"),
-            timeout: Union[int, Tuple[int, int]] = 30
+            base_url: str = os.getenv(
+                "ONTOLOGY_SERVICE", "http://localhost:8080"
+            ),
+            timeout: Union[int, Tuple[int, int]] = 30,
+            rabbitmq_host: Optional[str] = None,
+            rabbitmq_port: int = 5672,
+            rabbitmq_username: Optional[str] = None,
+            rabbitmq_password: Optional[str] = None,
+            rabbitmq_vhost: str = "/",
+            rabbitmq_exchange: Optional[str] = None,
+            rabbitmq_routing_key: Optional[str] = None
     ):
         """
         클라이언트 초기화
 
         Args:
             base_url: API 서버의 base URL (기본값: http://localhost:8080)
-            timeout: 요청 타임아웃 시간(초) 또는 (연결 타임아웃, 읽기 타임아웃) 튜플
-                    기본값 30초. int인 경우 (5초, timeout초)로 설정되어
+            timeout: 요청 타임아웃 시간(초) 또는 (연결 타임아웃, 읽기 타임아웃)
+                    튜플. 기본값 30초. int인 경우 (5초, timeout초)로 설정되어
                     서버가 죽어있을 때 빠르게 실패합니다.
+            rabbitmq_host: RabbitMQ 호스트 (환경변수: RABBITMQ_HOST)
+            rabbitmq_port: RabbitMQ 포트 (환경변수: RABBITMQ_PORT,
+                    기본값: 5672)
+            rabbitmq_username: RabbitMQ 사용자명
+                    (환경변수: RABBITMQ_USERNAME)
+            rabbitmq_password: RabbitMQ 비밀번호
+                    (환경변수: RABBITMQ_PASSWORD)
+            rabbitmq_vhost: RabbitMQ Virtual Host
+                    (환경변수: RABBITMQ_VHOST, 기본값: "/")
+            rabbitmq_exchange: RabbitMQ Exchange 이름
+                    (환경변수: RABBITMQ_EXCHANGE)
+            rabbitmq_routing_key: RabbitMQ Routing Key
+                    (환경변수: RABBITMQ_ROUTING_KEY)
         """
         self.base_url = base_url.rstrip('/')
         self.api_base = f"{self.base_url}/graphio/v1"
@@ -55,6 +90,32 @@ class GraphioClient:
         self._session: Optional[requests.Session] = None
         self._closed = False
         self.ontology = OntologyNamespace(self)
+
+        # RabbitMQ 설정
+        self.rabbitmq_host = (
+            rabbitmq_host or os.getenv("RABBITMQ_HOST", "localhost")
+        )
+        port_str = rabbitmq_port or os.getenv("RABBITMQ_PORT", "5672")
+        self.rabbitmq_port = int(port_str)
+        self.rabbitmq_username = (
+            rabbitmq_username or os.getenv("RABBITMQ_USERNAME", "guest")
+        )
+        self.rabbitmq_password = (
+            rabbitmq_password or os.getenv("RABBITMQ_PASSWORD", "guest")
+        )
+        self.rabbitmq_vhost = (
+            rabbitmq_vhost or os.getenv("RABBITMQ_VHOST", "/")
+        )
+        self.rabbitmq_exchange = (
+            rabbitmq_exchange
+            or os.getenv("RABBITMQ_EXCHANGE", "ontology-workflow")
+        )
+        self.rabbitmq_routing_key = (
+            rabbitmq_routing_key
+            or os.getenv("RABBITMQ_ROUTING_KEY", "objects")
+        )
+        self._rabbitmq_connection: Optional[Any] = None
+        self._rabbitmq_channel: Optional[Any] = None
 
         # 가비지 컬렉션 시 자동 정리 등록
         self._register_cleanup()
@@ -87,6 +148,40 @@ class GraphioClient:
 
         return self._session
 
+    def _get_rabbitmq_channel(self):
+        """
+        RabbitMQ 채널 가져오기 (Lazy 초기화)
+
+        Returns:
+            pika.channel.Channel 인스턴스
+        """
+        if not PIKA_AVAILABLE:
+            raise ImportError(
+                "pika가 설치되지 않았습니다. RabbitMQ를 사용하려면 "
+                "다음을 실행하세요: "
+                "pip install 'graphio-sdk[mq]' 또는 "
+                "pip install pika>=1.3.0"
+            )
+
+        if self._closed:
+            raise RuntimeError("클라이언트가 이미 닫혔습니다.")
+
+        conn = self._rabbitmq_connection
+        if conn is None or conn.is_closed:
+            credentials = pika.PlainCredentials(
+                self.rabbitmq_username, self.rabbitmq_password
+            )
+            parameters = pika.ConnectionParameters(
+                host=self.rabbitmq_host,
+                port=self.rabbitmq_port,
+                virtual_host=self.rabbitmq_vhost,
+                credentials=credentials
+            )
+            self._rabbitmq_connection = pika.BlockingConnection(parameters)
+            self._rabbitmq_channel = self._rabbitmq_connection.channel()
+
+        return self._rabbitmq_channel
+
     # ========================================================================
     # ObjectType 관련 API 호출
     # ========================================================================
@@ -106,7 +201,9 @@ class GraphioClient:
             params["name"] = name
 
         try:
-            response = self._get_session().get(url, params=params, timeout=self.timeout)
+            response = self._get_session().get(
+                url, params=params, timeout=self.timeout
+            )
             response.raise_for_status()
 
             result = response.json()
@@ -147,7 +244,9 @@ class GraphioClient:
         except requests.exceptions.RequestException as e:
             raise Exception(f"ObjectType 조회 실패: {str(e)}") from e
 
-    def _fetch_object_type_properties(self, object_type_id: str) -> List[Dict[str, Any]]:
+    def _fetch_object_type_properties(
+        self, object_type_id: str
+    ) -> List[Dict[str, Any]]:
         """ObjectType의 Property 목록 가져오기"""
         url = f"{self.api_base}/object-type-property/{object_type_id}"
 
@@ -172,7 +271,9 @@ class GraphioClient:
     # ObjectSet 관련 API 호출 (실제 데이터 조회)
     # ========================================================================
 
-    def _execute_select(self, select_dto: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def _execute_select(
+        self, select_dto: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
         """
         실제 데이터 조회 (selectObjectSet 사용)
 
@@ -213,16 +314,16 @@ class GraphioClient:
     def insert(self, obj):
         """
         Typed Object 또는 Link를 생성
-        
+
         Args:
             obj: TypedObject 또는 TypedLink 인스턴스
-            
+
         Returns:
             생성 결과
-            
+
         Example:
             Employee = client.ontology.get_object_type("Employee")
-            
+
             emp = Employee(
                 element_id="e-1",
                 properties={"name": "John", "age": 30}
@@ -236,16 +337,16 @@ class GraphioClient:
     def update(self, obj):
         """
         Typed Object 또는 Link를 업데이트
-        
+
         Args:
             obj: TypedObject 또는 TypedLink 인스턴스 (element_id 필수)
-            
+
         Returns:
             업데이트 결과
-            
+
         Example:
             Employee = client.ontology.get_object_type("Employee")
-            
+
             emp = Employee(
                 element_id="e-1",
                 properties={"name": "John", "age": 31}
@@ -253,8 +354,10 @@ class GraphioClient:
             client.update(emp)
         """
         if not obj.element_id:
-            raise ValueError("update()를 사용하려면 element_id가 필요합니다.")
-        
+            raise ValueError(
+                "update()를 사용하려면 element_id가 필요합니다."
+            )
+
         contract = obj.to_contract()
         messages = [contract]
         return self._execute_update(messages)
@@ -262,107 +365,136 @@ class GraphioClient:
     def delete(self, obj):
         """
         Typed Object 또는 Link를 삭제
-        
+
         Args:
             obj: TypedObject 또는 TypedLink 인스턴스 (element_id 필수)
-            
+
         Returns:
             삭제 결과
-            
+
         Example:
             Employee = client.ontology.get_object_type("Employee")
-            
+
             emp = Employee(element_id="e-1")
             client.delete(emp)
         """
         if not obj.element_id:
-            raise ValueError("delete()를 사용하려면 element_id가 필요합니다.")
-        
+            raise ValueError(
+                "delete()를 사용하려면 element_id가 필요합니다."
+            )
+
         contract = obj.to_contract()
         messages = [contract]
         return self._execute_delete(messages)
 
-    def _execute_delete(self, messages: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """삭제 실행"""
-        url = f"{self.api_base}/ontology-workflow/objects/delete"
+    def _execute_delete(
+        self, messages: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """삭제 실행 - RabbitMQ로 메시지 발행"""
+        # DTO 형식으로 요청 본문 구성
+        request_body = {
+            "eventType": "DELETE",
+            "timestamp": int(time.time() * 1000),  # 밀리초 단위 timestamp
+            "ontologyObjectInputs": messages
+        }
 
         try:
-            response = self._get_session().post(
-                url,
-                json=messages,
-                headers={"Content-Type": "application/json"},
-                timeout=self.timeout
+            channel = self._get_rabbitmq_channel()
+            message_body = json.dumps(request_body).encode('utf-8')
+
+            channel.basic_publish(
+                exchange=self.rabbitmq_exchange,
+                routing_key=self.rabbitmq_routing_key,
+                body=message_body,
+                properties=pika.BasicProperties(
+                    delivery_mode=2,  # 메시지 영속성
+                    content_type='application/json'
+                )
             )
-            response.raise_for_status()
 
-            result = response.json()
-            self._check_response(result, "delete")
+            return {
+                "status": True,
+                "message": "메시지가 RabbitMQ로 발행되었습니다"
+            }
 
-            return result
-
-        except requests.exceptions.Timeout as e:
+        except Exception as e:
             raise Exception(
-                f"객체 삭제 타임아웃 "
-                f"(timeout={self._format_timeout()}): {str(e)}"
+                f"객체 삭제 실패 (RabbitMQ 발행 오류): {str(e)}"
             ) from e
-        except requests.exceptions.RequestException as e:
-            raise Exception(f"객체 삭제 실패: {str(e)}") from e
 
     # ========================================================================
     # ObjectSet 생성/수정 API 호출
     # ========================================================================
 
-    def _execute_create(self, messages: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """생성 실행"""
-        url = f"{self.api_base}/ontology-workflow/objects/insert"
+    def _execute_create(
+        self, messages: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """생성 실행 - RabbitMQ로 메시지 발행"""
+        # DTO 형식으로 요청 본문 구성
+        request_body = {
+            "eventType": "INSERT",
+            "timestamp": int(time.time() * 1000),  # 밀리초 단위 timestamp
+            "ontologyObjectInputs": messages
+        }
 
         try:
-            response = self._get_session().post(
-                url,
-                json=messages,
-                headers={"Content-Type": "application/json"},
-                timeout=self.timeout
+            channel = self._get_rabbitmq_channel()
+            message_body = json.dumps(request_body).encode('utf-8')
+
+            channel.basic_publish(
+                exchange=self.rabbitmq_exchange,
+                routing_key=self.rabbitmq_routing_key,
+                body=message_body,
+                properties=pika.BasicProperties(
+                    delivery_mode=2,  # 메시지 영속성
+                    content_type='application/json'
+                )
             )
-            response.raise_for_status()
 
-            result = response.json()
-            self._check_response(result, "create")
+            return {
+                "status": True,
+                "message": "메시지가 RabbitMQ로 발행되었습니다"
+            }
 
-            return result
-
-        except requests.exceptions.Timeout as e:
+        except Exception as e:
             raise Exception(
-                f"객체 생성 타임아웃 "
-                f"(timeout={self._format_timeout()}): {str(e)}"
+                f"객체 생성 실패 (RabbitMQ 발행 오류): {str(e)}"
             ) from e
-        except requests.exceptions.RequestException as e:
-            raise Exception(f"객체 생성 실패: {str(e)}") from e
 
-    def _execute_update(self, messages: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """업데이트 실행"""
-        url = f"{self.api_base}/ontology-workflow/objects/update"
+    def _execute_update(
+        self, messages: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """업데이트 실행 - RabbitMQ로 메시지 발행"""
+        # DTO 형식으로 요청 본문 구성
+        request_body = {
+            "eventType": "UPDATE",
+            "timestamp": int(time.time() * 1000),  # 밀리초 단위 timestamp
+            "ontologyObjectInputs": messages
+        }
 
         try:
-            response = self._get_session().post(
-                url,
-                json=messages,
-                headers={"Content-Type": "application/json"},
-                timeout=self.timeout
+            channel = self._get_rabbitmq_channel()
+            message_body = json.dumps(request_body).encode('utf-8')
+
+            channel.basic_publish(
+                exchange=self.rabbitmq_exchange,
+                routing_key=self.rabbitmq_routing_key,
+                body=message_body,
+                properties=pika.BasicProperties(
+                    delivery_mode=2,  # 메시지 영속성
+                    content_type='application/json'
+                )
             )
-            response.raise_for_status()
 
-            result = response.json()
-            self._check_response(result, "update")
+            return {
+                "status": True,
+                "message": "메시지가 RabbitMQ로 발행되었습니다"
+            }
 
-            return result
-
-        except requests.exceptions.Timeout as e:
+        except Exception as e:
             raise Exception(
-                f"객체 업데이트 타임아웃 "
-                f"(timeout={self._format_timeout()}): {str(e)}"
+                f"객체 업데이트 실패 (RabbitMQ 발행 오류): {str(e)}"
             ) from e
-        except requests.exceptions.RequestException as e:
-            raise Exception(f"객체 업데이트 실패: {str(e)}") from e
 
     # ========================================================================
     # 유틸리티
@@ -395,9 +527,21 @@ class GraphioClient:
 
         Note: 가비지 컬렉션 시 자동으로 호출되므로 대부분의 경우 명시적 호출 불필요
         """
-        if not self._closed and self._session:
-            self._session.close()
-            self._session = None
+        if not self._closed:
+            if self._session:
+                self._session.close()
+                self._session = None
+
+            # RabbitMQ 연결 종료
+            conn = self._rabbitmq_connection
+            if conn and not conn.is_closed:
+                try:
+                    self._rabbitmq_connection.close()
+                except Exception:
+                    pass  # 연결 종료 중 오류는 무시
+                self._rabbitmq_connection = None
+                self._rabbitmq_channel = None
+
             self._closed = True
 
     def __enter__(self):
