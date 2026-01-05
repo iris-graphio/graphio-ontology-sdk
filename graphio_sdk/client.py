@@ -395,7 +395,7 @@ class GraphioClient:
         request_body = {
             "eventType": "DELETE",
             "timestamp": int(time.time() * 1000),  # 밀리초 단위 timestamp
-            "ontologyObjectInputs": messages
+            "objectInputs": messages
         }
 
         try:
@@ -434,7 +434,7 @@ class GraphioClient:
         request_body = {
             "eventType": "INSERT",
             "timestamp": int(time.time() * 1000),  # 밀리초 단위 timestamp
-            "ontologyObjectInputs": messages
+            "objectInputs": messages
         }
 
         try:
@@ -469,7 +469,7 @@ class GraphioClient:
         request_body = {
             "eventType": "UPDATE",
             "timestamp": int(time.time() * 1000),  # 밀리초 단위 timestamp
-            "ontologyObjectInputs": messages
+            "objectInputs": messages
         }
 
         try:
