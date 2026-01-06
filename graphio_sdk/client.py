@@ -112,7 +112,7 @@ class GraphioClient:
         )
         self.rabbitmq_routing_key = (
             rabbitmq_routing_key
-            or os.getenv("RABBITMQ_ROUTING_KEY", "objects")
+            or os.getenv("RABBITMQ_ROUTING_KEY", "ontology")
         )
         self._rabbitmq_connection: Optional[Any] = None
         self._rabbitmq_channel: Optional[Any] = None
