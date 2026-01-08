@@ -45,16 +45,16 @@ class GraphioClient:
     def __init__(
             self,
             base_url: str = os.getenv(
-                "ONTOLOGY_SERVICE", "http://localhost:8080"
+                "ONTOLOGY_SERVICE", "http://ontology-svc:8080"
             ),
             timeout: Union[int, Tuple[int, int]] = 30,
-            rabbitmq_host: Optional[str] = None,
+            rabbitmq_host: Optional[str] = "rabbitmq-svc",
             rabbitmq_port: int = 5672,
             rabbitmq_username: Optional[str] = None,
             rabbitmq_password: Optional[str] = None,
             rabbitmq_vhost: str = "/",
-            rabbitmq_exchange: Optional[str] = None,
-            rabbitmq_routing_key: Optional[str] = None
+            rabbitmq_exchange: Optional[str] = "ontology.direct",
+            rabbitmq_routing_key: Optional[str] = "ontology"
     ):
         """
         클라이언트 초기화
