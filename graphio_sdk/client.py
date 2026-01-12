@@ -48,13 +48,13 @@ class GraphioClient:
                 "ONTOLOGY_SERVICE", "http://ontology-svc:8080"
             ),
             timeout: Union[int, Tuple[int, int]] = 30,
-            rabbitmq_host: Optional[str] = "rabbitmq-svc",
-            rabbitmq_port: int = 5672,
+            rabbitmq_host: Optional[str] = None,
+            rabbitmq_port: Optional[int] = None,
             rabbitmq_username: Optional[str] = None,
             rabbitmq_password: Optional[str] = None,
-            rabbitmq_vhost: str = "/",
-            rabbitmq_exchange: Optional[str] = "ontology.direct",
-            rabbitmq_routing_key: Optional[str] = "ontology"
+            rabbitmq_vhost: Optional[str] = None,
+            rabbitmq_exchange: Optional[str] = None,
+            rabbitmq_routing_key: Optional[str] = None
     ):
         """
         클라이언트 초기화
@@ -64,19 +64,19 @@ class GraphioClient:
             timeout: 요청 타임아웃 시간(초) 또는 (연결 타임아웃, 읽기 타임아웃)
                     튜플. 기본값 30초. int인 경우 (5초, timeout초)로 설정되어
                     서버가 죽어있을 때 빠르게 실패합니다.
-            rabbitmq_host: RabbitMQ 호스트 (환경변수: RABBITMQ_HOST)
-            rabbitmq_port: RabbitMQ 포트 (환경변수: RABBITMQ_PORT,
+            rabbitmq_host: RabbitMQ 호스트 (환경변수: RABBIT_MQ_HOST)
+            rabbitmq_port: RabbitMQ 포트 (환경변수: RABBIT_MQ_PORT,
                     기본값: 5672)
             rabbitmq_username: RabbitMQ 사용자명
-                    (환경변수: RABBITMQ_USERNAME)
+                    (환경변수: RABBIT_MQ_USERNAME)
             rabbitmq_password: RabbitMQ 비밀번호
-                    (환경변수: RABBITMQ_PASSWORD)
+                    (환경변수: RABBIT_MQ_PASSWORD)
             rabbitmq_vhost: RabbitMQ Virtual Host
-                    (환경변수: RABBITMQ_VHOST, 기본값: "/")
+                    (환경변수: RABBIT_MQ_VHOST, 기본값: "/")
             rabbitmq_exchange: RabbitMQ Exchange 이름
-                    (환경변수: RABBITMQ_EXCHANGE)
+                    (환경변수: RABBIT_MQ_EXCHANGE)
             rabbitmq_routing_key: RabbitMQ Routing Key
-                    (환경변수: RABBITMQ_ROUTING_KEY)
+                    (환경변수: RABBIT_MQ_ROUTING_KEY)
         """
         self.base_url = base_url.rstrip('/')
         self.api_base = f"{self.base_url}/graphio/v1"
@@ -93,26 +93,29 @@ class GraphioClient:
 
         # RabbitMQ 설정
         self.rabbitmq_host = (
-            rabbitmq_host or os.getenv("RABBITMQ_HOST", "localhost")
+            rabbitmq_host or os.getenv("RABBIT_MQ_HOST", "rabbitmq")
         )
-        port_str = rabbitmq_port or os.getenv("RABBITMQ_PORT", "5672")
-        self.rabbitmq_port = int(port_str)
+        if rabbitmq_port is not None:
+            self.rabbitmq_port = rabbitmq_port
+        else:
+            port_str = os.getenv("RABBIT_MQ_PORT", "5672")
+            self.rabbitmq_port = int(port_str)
         self.rabbitmq_username = (
-            rabbitmq_username or os.getenv("RABBITMQ_USERNAME", "guest")
+            rabbitmq_username or os.getenv("RABBIT_MQ_USERNAME", "guest")
         )
         self.rabbitmq_password = (
-            rabbitmq_password or os.getenv("RABBITMQ_PASSWORD", "guest")
+            rabbitmq_password or os.getenv("RABBIT_MQ_PASSWORD", "guest")
         )
         self.rabbitmq_vhost = (
-            rabbitmq_vhost or os.getenv("RABBITMQ_VHOST", "/")
+            rabbitmq_vhost or os.getenv("RABBIT_MQ_VHOST", "/")
         )
         self.rabbitmq_exchange = (
             rabbitmq_exchange
-            or os.getenv("RABBITMQ_EXCHANGE", "ontology-workflow")
+            or os.getenv("RABBIT_MQ_EXCHANGE", "ontology.direct")
         )
         self.rabbitmq_routing_key = (
             rabbitmq_routing_key
-            or os.getenv("RABBITMQ_ROUTING_KEY", "ontology")
+            or os.getenv("RABBIT_MQ_ROUTING_KEY", "ontology")
         )
         self._rabbitmq_connection: Optional[Any] = None
         self._rabbitmq_channel: Optional[Any] = None
