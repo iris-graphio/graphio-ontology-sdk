@@ -31,6 +31,31 @@ class DataAPI:
         return result.get("data", [])
 
 
+class MetaManage:
+    def __init__(self, client: "GraphioClient"):
+        self._client = client
+
+    def list(self):
+        url = f"{self._client.api_base}/"
+        response = self._client._get_session().get(
+            url, timeout=self._client.timeout
+        )
+        response.raise_for_status()
+        result = response.json()
+        self._client._check_response(result, "list all-meta")
+        return result.get("data", [])
+
+    def duplicate_check(self, meta_type_name: str):
+        url = f"{self._client.api_base}/{meta_type_name}"
+        response = self._client._get_session().get(
+            url, timeout=self._client.timeout
+        )
+        response.raise_for_status()
+        result = response.json()
+        self._client._check_response(result, "check meta_type name duplicate")
+        return result.get("status", [])
+
+
 # ============================
 # 최상위 진입점 (client.meta_type)
 # ============================
