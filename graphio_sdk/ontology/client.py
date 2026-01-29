@@ -7,8 +7,8 @@ import requests
 import weakref
 from typing import List, Dict, Any, Optional, Union, Tuple
 
-from .ontology import OntologyNamespace
-from .meta_type import MetaTypeNamespace
+from graphio_sdk.ontology import OntologyNamespace
+from graphio_sdk.meta_type import MetaTypeNamespace
 
 # pika는 optional dependency이므로 import 시도
 try:
@@ -117,7 +117,7 @@ class GraphioClient:
         )
         self.rabbitmq_routing_key = (
             rabbitmq_routing_key
-            or os.getenv("RABBIT_MQ_ROUTING_KEY", "ontology")
+            or os.getenv("RABBIT_MQ_ROUTING_KEY", "")
         )
         self._rabbitmq_connection: Optional[Any] = None
         self._rabbitmq_channel: Optional[Any] = None
