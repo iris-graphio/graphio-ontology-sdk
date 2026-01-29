@@ -5,7 +5,6 @@ Ontology 네임스페이스 및 ObjectType 관리 (Lazy Loading Only)
 from typing import List, Dict, Any, Optional, TYPE_CHECKING
 import threading
 import time
-import json
 
 import requests
 
@@ -15,13 +14,6 @@ from .edits import OntologyEditsBuilder
 
 if TYPE_CHECKING:
     from graphio_sdk.client import GraphioClient
-
-try:
-    import pika
-    PIKA_AVAILABLE = True
-except ImportError:
-    PIKA_AVAILABLE = False
-    pika = None
 
 
 class OntologyNamespace:
@@ -157,104 +149,95 @@ class OntologyNamespace:
             raise Exception(f"데이터 조회 실패: {str(e)}") from e
 
     # ========================================================================
-    # ObjectSet 생성/수정 (RabbitMQ 발행, ontology 전용)
+    # ObjectSet 생성/수정 (HTTP API 호출, ontology 전용)
     # ========================================================================
 
     def _execute_create(
         self, messages: List[Dict[str, Any]]
     ) -> Dict[str, Any]:
-        """생성 실행 - RabbitMQ로 메시지 발행"""
-        if not PIKA_AVAILABLE:
-            raise ImportError(
-                "pika가 설치되지 않았습니다. RabbitMQ를 사용하려면 "
-                "pip install 'graphio-sdk[mq]' 또는 pip install pika>=1.3.0"
-            )
+        """생성 실행 - HTTP API로 요청"""
+        url = f"{self.client.api_base}/ontology-workflow/objects/insert"
         request_body = {
             "eventType": "INSERT",
             "timestamp": int(time.time() * 1000),
             "objectInputs": messages
         }
         try:
-            channel = self.client._get_rabbitmq_channel()
-            message_body = json.dumps(request_body).encode('utf-8')
-            channel.basic_publish(
-                exchange=self.client.rabbitmq_exchange,
-                routing_key=self.client.rabbitmq_routing_key,
-                body=message_body,
-                properties=pika.BasicProperties(
-                    delivery_mode=2,
-                    content_type='application/json'
-                )
+            response = self.client._get_session().post(
+                url,
+                json=request_body,
+                headers={"Content-Type": "application/json"},
+                timeout=self.client.timeout
             )
-            return {"status": True, "message": "메시지가 RabbitMQ로 발행되었습니다"}
-        except Exception as e:
+            response.raise_for_status()
+            result = response.json()
+            self.client._check_response(result, "객체 생성")
+            return result.get("data", result)
+        except requests.exceptions.Timeout as e:
             raise Exception(
-                f"객체 생성 실패 (RabbitMQ 발행 오류): {str(e)}"
+                f"객체 생성 타임아웃 "
+                f"(timeout={self.client._format_timeout()}): {str(e)}"
             ) from e
+        except requests.exceptions.RequestException as e:
+            raise Exception(f"객체 생성 실패: {str(e)}") from e
 
     def _execute_update(
         self, messages: List[Dict[str, Any]]
     ) -> Dict[str, Any]:
-        """업데이트 실행 - RabbitMQ로 메시지 발행"""
-        if not PIKA_AVAILABLE:
-            raise ImportError(
-                "pika가 설치되지 않았습니다. RabbitMQ를 사용하려면 "
-                "pip install 'graphio-sdk[mq]' 또는 pip install pika>=1.3.0"
-            )
+        """업데이트 실행 - HTTP API로 요청"""
+        url = f"{self.client.api_base}/ontology-workflow/objects/update"
         request_body = {
             "eventType": "UPDATE",
             "timestamp": int(time.time() * 1000),
             "objectInputs": messages
         }
         try:
-            channel = self.client._get_rabbitmq_channel()
-            message_body = json.dumps(request_body).encode('utf-8')
-            channel.basic_publish(
-                exchange=self.client.rabbitmq_exchange,
-                routing_key=self.client.rabbitmq_routing_key,
-                body=message_body,
-                properties=pika.BasicProperties(
-                    delivery_mode=2,
-                    content_type='application/json'
-                )
+            response = self.client._get_session().post(
+                url,
+                json=request_body,
+                headers={"Content-Type": "application/json"},
+                timeout=self.client.timeout
             )
-            return {"status": True, "message": "메시지가 RabbitMQ로 발행되었습니다"}
-        except Exception as e:
+            response.raise_for_status()
+            result = response.json()
+            self.client._check_response(result, "객체 업데이트")
+            return result.get("data", result)
+        except requests.exceptions.Timeout as e:
             raise Exception(
-                f"객체 업데이트 실패 (RabbitMQ 발행 오류): {str(e)}"
+                f"객체 업데이트 타임아웃 "
+                f"(timeout={self.client._format_timeout()}): {str(e)}"
             ) from e
+        except requests.exceptions.RequestException as e:
+            raise Exception(f"객체 업데이트 실패: {str(e)}") from e
 
     def _execute_delete(
         self, messages: List[Dict[str, Any]]
     ) -> Dict[str, Any]:
-        """삭제 실행 - RabbitMQ로 메시지 발행"""
-        if not PIKA_AVAILABLE:
-            raise ImportError(
-                "pika가 설치되지 않았습니다. RabbitMQ를 사용하려면 "
-                "pip install 'graphio-sdk[mq]' 또는 pip install pika>=1.3.0"
-            )
+        """삭제 실행 - HTTP API로 요청"""
+        url = f"{self.client.api_base}/ontology-workflow/objects/delete"
         request_body = {
             "eventType": "DELETE",
             "timestamp": int(time.time() * 1000),
             "objectInputs": messages
         }
         try:
-            channel = self.client._get_rabbitmq_channel()
-            message_body = json.dumps(request_body).encode('utf-8')
-            channel.basic_publish(
-                exchange=self.client.rabbitmq_exchange,
-                routing_key=self.client.rabbitmq_routing_key,
-                body=message_body,
-                properties=pika.BasicProperties(
-                    delivery_mode=2,
-                    content_type='application/json'
-                )
+            response = self.client._get_session().post(
+                url,
+                json=request_body,
+                headers={"Content-Type": "application/json"},
+                timeout=self.client.timeout
             )
-            return {"status": True, "message": "메시지가 RabbitMQ로 발행되었습니다"}
-        except Exception as e:
+            response.raise_for_status()
+            result = response.json()
+            self.client._check_response(result, "객체 삭제")
+            return result.get("data", result)
+        except requests.exceptions.Timeout as e:
             raise Exception(
-                f"객체 삭제 실패 (RabbitMQ 발행 오류): {str(e)}"
+                f"객체 삭제 타임아웃 "
+                f"(timeout={self.client._format_timeout()}): {str(e)}"
             ) from e
+        except requests.exceptions.RequestException as e:
+            raise Exception(f"객체 삭제 실패: {str(e)}") from e
 
     # ========================================================================
     # Typed Object/Link API (insert, update, delete)
