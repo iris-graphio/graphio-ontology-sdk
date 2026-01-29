@@ -198,11 +198,11 @@ class OntologyEditsBuilder:
 
         if self._creates:
             create_messages = [obj.to_message() for obj in self._creates]
-            results['creates'] = self.client._execute_create(create_messages)
+            results['creates'] = self.client.ontology._execute_create(create_messages)
 
         if self._updates:
             update_messages = [obj.to_message() for obj in self._updates]
-            results['updates'] = self.client._execute_update(update_messages)
+            results['updates'] = self.client.ontology._execute_update(update_messages)
 
         # 커밋 후 초기화
         self._creates.clear()

@@ -4,6 +4,10 @@ Ontology 네임스페이스 및 ObjectType 관리 (Lazy Loading Only)
 
 from typing import List, Dict, Any, Optional, TYPE_CHECKING
 import threading
+import time
+import json
+
+import requests
 
 from .object_type import ObjectTypeBase
 from .operators import PropertyDescriptor
@@ -11,6 +15,13 @@ from .edits import OntologyEditsBuilder
 
 if TYPE_CHECKING:
     from .client import GraphioClient
+
+try:
+    import pika
+    PIKA_AVAILABLE = True
+except ImportError:
+    PIKA_AVAILABLE = False
+    pika = None
 
 
 class OntologyNamespace:
@@ -23,6 +34,302 @@ class OntologyNamespace:
         self._link_types: Dict[str, type] = {}
         self._link_type_id_to_name: Dict[str, str] = {}
         self._cache_lock = threading.Lock()  # 스레드 안전성
+
+    # ========================================================================
+    # ObjectType 관련 API 호출 (ontology 전용)
+    # ========================================================================
+
+    def _fetch_object_types(
+            self,
+            ontology_id: Optional[str] = None,
+            name: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """서버에서 ObjectType 목록 가져오기"""
+        url = f"{self.client.api_base}/object-type"
+
+        params = {}
+        if ontology_id:
+            params["ontology-id"] = ontology_id
+        if name:
+            params["name"] = name
+
+        try:
+            response = self.client._get_session().get(
+                url, params=params, timeout=self.client.timeout
+            )
+            response.raise_for_status()
+
+            result = response.json()
+            self.client._check_response(result, "fetch object types")
+
+            return result.get("data", [])
+
+        except requests.exceptions.Timeout as e:
+            raise Exception(
+                f"ObjectType 목록 조회 타임아웃 "
+                f"(timeout={self.client._format_timeout()}): {str(e)}"
+            ) from e
+        except requests.exceptions.RequestException as e:
+            raise Exception(f"ObjectType 목록 조회 실패: {str(e)}") from e
+
+    def _fetch_object_type_by_id(self, object_type_id: str) -> Dict[str, Any]:
+        """특정 ObjectType 상세 정보 가져오기"""
+        url = f"{self.client.api_base}/object-type/{object_type_id}"
+
+        try:
+            response = self.client._get_session().get(url, timeout=self.client.timeout)
+            response.raise_for_status()
+
+            result = response.json()
+
+            # CommonResponse 어노테이션이 있는 경우 data를 직접 반환
+            if isinstance(result, dict) and "id" in result:
+                return result
+
+            self.client._check_response(result, "fetch object type")
+            return result.get("data", {})
+
+        except requests.exceptions.Timeout as e:
+            raise Exception(
+                f"ObjectType 조회 타임아웃 "
+                f"(timeout={self.client._format_timeout()}): {str(e)}"
+            ) from e
+        except requests.exceptions.RequestException as e:
+            raise Exception(f"ObjectType 조회 실패: {str(e)}") from e
+
+    def _fetch_object_type_properties(
+        self, object_type_id: str
+    ) -> List[Dict[str, Any]]:
+        """ObjectType의 Property 목록 가져오기"""
+        url = f"{self.client.api_base}/object-type-property/{object_type_id}"
+
+        try:
+            response = self.client._get_session().get(url, timeout=self.client.timeout)
+            response.raise_for_status()
+
+            result = response.json()
+            self.client._check_response(result, "fetch object type properties")
+
+            return result.get("data", [])
+
+        except requests.exceptions.Timeout as e:
+            raise Exception(
+                f"ObjectType Properties 조회 타임아웃 "
+                f"(timeout={self.client._format_timeout()}): {str(e)}"
+            ) from e
+        except requests.exceptions.RequestException as e:
+            raise Exception(f"ObjectType Properties 조회 실패: {str(e)}") from e
+
+    def _execute_select(
+        self, select_dto: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
+        """
+        실제 데이터 조회 (selectObjectSet 사용, ontology-workflow 전용)
+
+        Args:
+            select_dto: ObjectSetSelectDto 형식의 요청
+
+        Returns:
+            조회된 실제 데이터 리스트
+        """
+        url = f"{self.client.api_base}/ontology-workflow/objects/select"
+
+        try:
+            response = self.client._get_session().post(
+                url,
+                json=select_dto,
+                headers={"Content-Type": "application/json"},
+                timeout=self.client.timeout
+            )
+            response.raise_for_status()
+
+            result = response.json()
+            self.client._check_response(result, "select")
+
+            return result.get("data", [])
+
+        except requests.exceptions.Timeout as e:
+            raise Exception(
+                f"데이터 조회 타임아웃 "
+                f"(timeout={self.client._format_timeout()}): {str(e)}"
+            ) from e
+        except requests.exceptions.RequestException as e:
+            raise Exception(f"데이터 조회 실패: {str(e)}") from e
+
+    # ========================================================================
+    # ObjectSet 생성/수정 (RabbitMQ 발행, ontology 전용)
+    # ========================================================================
+
+    def _execute_create(
+        self, messages: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """생성 실행 - RabbitMQ로 메시지 발행"""
+        if not PIKA_AVAILABLE:
+            raise ImportError(
+                "pika가 설치되지 않았습니다. RabbitMQ를 사용하려면 "
+                "pip install 'graphio-sdk[mq]' 또는 pip install pika>=1.3.0"
+            )
+        request_body = {
+            "eventType": "INSERT",
+            "timestamp": int(time.time() * 1000),
+            "objectInputs": messages
+        }
+        try:
+            channel = self.client._get_rabbitmq_channel()
+            message_body = json.dumps(request_body).encode('utf-8')
+            channel.basic_publish(
+                exchange=self.client.rabbitmq_exchange,
+                routing_key=self.client.rabbitmq_routing_key,
+                body=message_body,
+                properties=pika.BasicProperties(
+                    delivery_mode=2,
+                    content_type='application/json'
+                )
+            )
+            return {"status": True, "message": "메시지가 RabbitMQ로 발행되었습니다"}
+        except Exception as e:
+            raise Exception(
+                f"객체 생성 실패 (RabbitMQ 발행 오류): {str(e)}"
+            ) from e
+
+    def _execute_update(
+        self, messages: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """업데이트 실행 - RabbitMQ로 메시지 발행"""
+        if not PIKA_AVAILABLE:
+            raise ImportError(
+                "pika가 설치되지 않았습니다. RabbitMQ를 사용하려면 "
+                "pip install 'graphio-sdk[mq]' 또는 pip install pika>=1.3.0"
+            )
+        request_body = {
+            "eventType": "UPDATE",
+            "timestamp": int(time.time() * 1000),
+            "objectInputs": messages
+        }
+        try:
+            channel = self.client._get_rabbitmq_channel()
+            message_body = json.dumps(request_body).encode('utf-8')
+            channel.basic_publish(
+                exchange=self.client.rabbitmq_exchange,
+                routing_key=self.client.rabbitmq_routing_key,
+                body=message_body,
+                properties=pika.BasicProperties(
+                    delivery_mode=2,
+                    content_type='application/json'
+                )
+            )
+            return {"status": True, "message": "메시지가 RabbitMQ로 발행되었습니다"}
+        except Exception as e:
+            raise Exception(
+                f"객체 업데이트 실패 (RabbitMQ 발행 오류): {str(e)}"
+            ) from e
+
+    def _execute_delete(
+        self, messages: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """삭제 실행 - RabbitMQ로 메시지 발행"""
+        if not PIKA_AVAILABLE:
+            raise ImportError(
+                "pika가 설치되지 않았습니다. RabbitMQ를 사용하려면 "
+                "pip install 'graphio-sdk[mq]' 또는 pip install pika>=1.3.0"
+            )
+        request_body = {
+            "eventType": "DELETE",
+            "timestamp": int(time.time() * 1000),
+            "objectInputs": messages
+        }
+        try:
+            channel = self.client._get_rabbitmq_channel()
+            message_body = json.dumps(request_body).encode('utf-8')
+            channel.basic_publish(
+                exchange=self.client.rabbitmq_exchange,
+                routing_key=self.client.rabbitmq_routing_key,
+                body=message_body,
+                properties=pika.BasicProperties(
+                    delivery_mode=2,
+                    content_type='application/json'
+                )
+            )
+            return {"status": True, "message": "메시지가 RabbitMQ로 발행되었습니다"}
+        except Exception as e:
+            raise Exception(
+                f"객체 삭제 실패 (RabbitMQ 발행 오류): {str(e)}"
+            ) from e
+
+    # ========================================================================
+    # Typed Object/Link API (insert, update, delete)
+    # ========================================================================
+
+    def insert(self, obj):
+        """
+        Typed Object 또는 Link를 생성
+
+        Args:
+            obj: TypedObject 또는 TypedLink 인스턴스
+
+        Returns:
+            생성 결과
+
+        Example:
+            Employee = client.ontology.get_object_type("Employee")
+            emp = Employee(
+                element_id="e-1",
+                properties={"name": "John", "age": 30}
+            )
+            client.ontology.insert(emp)
+        """
+        contract = obj.to_contract()
+        messages = [contract]
+        return self._execute_create(messages)
+
+    def update(self, obj):
+        """
+        Typed Object 또는 Link를 업데이트
+
+        Args:
+            obj: TypedObject 또는 TypedLink 인스턴스 (element_id 필수)
+
+        Returns:
+            업데이트 결과
+
+        Example:
+            Employee = client.ontology.get_object_type("Employee")
+            emp = Employee(
+                element_id="e-1",
+                properties={"name": "John", "age": 31}
+            )
+            client.ontology.update(emp)
+        """
+        if not obj.element_id:
+            raise ValueError(
+                "update()를 사용하려면 element_id가 필요합니다."
+            )
+        contract = obj.to_contract()
+        messages = [contract]
+        return self._execute_update(messages)
+
+    def delete(self, obj):
+        """
+        Typed Object 또는 Link를 삭제
+
+        Args:
+            obj: TypedObject 또는 TypedLink 인스턴스 (element_id 필수)
+
+        Returns:
+            삭제 결과
+
+        Example:
+            Employee = client.ontology.get_object_type("Employee")
+            emp = Employee(element_id="e-1")
+            client.ontology.delete(emp)
+        """
+        if not obj.element_id:
+            raise ValueError(
+                "delete()를 사용하려면 element_id가 필요합니다."
+            )
+        contract = obj.to_contract()
+        messages = [contract]
+        return self._execute_delete(messages)
 
     def register_object_type(
             self,
@@ -46,11 +353,12 @@ class OntologyNamespace:
             if name in self._object_types:
                 return self._object_types[name]
 
-            # 동적으로 클래스 생성
+            # 동적으로 클래스 생성 (query에서 _execute_select 호출을 위해 _ontology_namespace 전달)
             cls = type(name, (ObjectTypeBase,), {
                 "_object_type_id": object_type_id,
                 "_object_type_name": name,
                 "_client": self.client,
+                "_ontology_namespace": self,
                 "_properties": properties or []
             })
 
@@ -102,10 +410,10 @@ class OntologyNamespace:
 
         # 서버에서 로드
         if object_type_id:
-            ot_data = self.client._fetch_object_type_by_id(object_type_id)
+            ot_data = self._fetch_object_type_by_id(object_type_id)
         elif name:
             # name으로 검색
-            results = self.client._fetch_object_types(name=name)
+            results = self._fetch_object_types(name=name)
             if not results:
                 raise ValueError(f"ObjectType '{name}'을 찾을 수 없습니다.")
             ot_data = results[0]  # 첫 번째 결과 사용
@@ -119,7 +427,7 @@ class OntologyNamespace:
             raise ValueError(f"유효하지 않은 ObjectType 데이터: {ot_data}")
 
         # Properties 가져오기
-        properties = self.client._fetch_object_type_properties(object_type_id)
+        properties = self._fetch_object_type_properties(object_type_id)
         property_names = [prop["name"] for prop in properties]
 
         # ObjectType 등록
