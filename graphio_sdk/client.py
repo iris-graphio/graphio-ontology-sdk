@@ -44,9 +44,7 @@ class GraphioClient:
 
     def __init__(
             self,
-            base_url: str = os.getenv(
-                "ONTOLOGY_SERVICE", "http://ontology-svc:8080"
-            ),
+            base_url: Optional[str] = None,
             timeout: Union[int, Tuple[int, int]] = 30,
             rabbitmq_host: Optional[str] = None,
             rabbitmq_port: Optional[int] = None,
@@ -78,6 +76,10 @@ class GraphioClient:
             rabbitmq_routing_key: RabbitMQ Routing Key
                     (환경변수: RABBIT_MQ_ROUTING_KEY)
         """
+        # base_url이 None이면 환경변수에서 가져오기
+        if base_url is None:
+            base_url = os.getenv("ONTOLOGY_SERVICE", "http://ontology-svc:8080")
+        
         self.base_url = base_url.rstrip('/')
         self.api_base = f"{self.base_url}/graphio/v1"
 
