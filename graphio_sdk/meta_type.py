@@ -11,8 +11,8 @@ if TYPE_CHECKING:
 # ============================
 # 리소스별 래퍼
 # ============================
-class DataAPI:
-    """GET /all-data list 전용 래퍼 (GraphioClient 세션 사용)"""
+class MetaTableDataAPI:
+    """메타타입 테이블의 데이터를 조작하는 래퍼 (GraphioClient 세션 사용)"""
 
     def __init__(self, client: "GraphioClient"):
         self._client = client
@@ -31,7 +31,8 @@ class DataAPI:
         return result.get("data", [])
 
 
-class MetaManage:
+class MetaManageAPI:
+    """메타타입을 관리하는 래퍼"""
     def __init__(self, client: "GraphioClient"):
         self._client = client
 
@@ -67,10 +68,12 @@ class MetaTypeNamespace:
 
     def __init__(self, client: "GraphioClient"):
         self._client = client
-        self.data = DataAPI(client)
+        self.meta_table_data = MetaTableDataAPI(client)
+        self.meta_type_manage = MetaManageAPI(client)
 
 
 __all__ = [
-    "DataAPI",
+    "MetaTableDataAPI",
+    "MetaManageAPI",
     "MetaTypeNamespace",
 ]
