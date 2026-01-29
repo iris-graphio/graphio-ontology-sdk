@@ -2,10 +2,10 @@
 MetaType 네임스페이스 - GraphIOClient와 함께 사용
 """
 
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import Any, Dict, List, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from graphio_sdk.ontology.client import GraphioClient
+    from graphio_sdk.client import GraphioClient
 
 
 # ============================

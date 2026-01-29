@@ -16,7 +16,7 @@ Example:
 __version__ = "0.1.0"
 __author__ = "GraphIO Team"
 
-from graphio_sdk.ontology.client import GraphioClient
+from graphio_sdk.client import GraphioClient
 from graphio_sdk.ontology.operators import QueryOp, Condition, LogicalCondition
 
 __all__ = [

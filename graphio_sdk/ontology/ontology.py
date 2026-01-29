@@ -14,7 +14,7 @@ from .operators import PropertyDescriptor
 from .edits import OntologyEditsBuilder
 
 if TYPE_CHECKING:
-    from graphio_sdk.ontology.client import GraphioClient
+    from graphio_sdk.client import GraphioClient
 
 try:
     import pika
