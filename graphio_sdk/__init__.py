@@ -22,6 +22,7 @@ from graphio_sdk.ontology.object_type import ObjectTypeBase
 from graphio_sdk.ontology.query import ObjectSetQuery
 from graphio_sdk.ontology.edits import EditableObject, OntologyEditsBuilder
 from graphio_sdk.ontology.ontology import OntologyNamespace
+from graphio_sdk.meta_type import MetaTypeNamespace
 
 __all__ = [
     "GraphioClient",
@@ -33,4 +34,5 @@ __all__ = [
     "EditableObject",
     "OntologyEditsBuilder",
     "OntologyNamespace",
+    "MetaTypeNamespace",
 ]
