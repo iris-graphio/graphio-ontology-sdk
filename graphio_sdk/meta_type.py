@@ -176,6 +176,9 @@ class MetaManageAPI:
 
 
 class EtcAPI:
+    def __init__(self, client: "GraphioClient"):
+        self._client = client
+
     def tag_list(self):
         url = f"{self._client.api_base}/tag-list"
         response = self._client._get_session().get(
@@ -200,6 +203,7 @@ class MetaTypeNamespace:
         self._client = client
         self.meta_table_data = MetaTableAPI(client)
         self.meta_type_manage = MetaManageAPI(client)
+        self.meta_type_etc = EtcAPI(client)
 
 
 __all__ = [
