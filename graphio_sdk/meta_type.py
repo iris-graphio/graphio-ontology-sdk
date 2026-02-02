@@ -37,7 +37,7 @@ class MetaTableAPI:
         )
         response.raise_for_status()
         result = response.json()
-        self._client._check_response(result, "list table")
+        self._client._check_response(result, "list meta type table")
         return result.get("data", [])
 
     def table_list(self, connection_instance_id: str, schema_name: str) -> List[Dict[str, Any]]:
