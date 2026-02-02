@@ -184,6 +184,8 @@ class EtcAPI:
         response = self._client._get_session().get(
             url, timeout=self._client.timeout
         )
+
+        GraphioClient(base_url="http://0.0.0.0").meta_type.meta_type_manage
         response.raise_for_status()
         result = response.json()
         self._client._check_response(result, "get tag list")
@@ -201,9 +203,9 @@ class MetaTypeNamespace:
 
     def __init__(self, client: "GraphioClient"):
         self._client = client
-        self.meta_table_data = MetaTableAPI(client)
-        self.meta_type_manage = MetaManageAPI(client)
-        self.meta_type_etc = EtcAPI(client)
+        self.table_data = MetaTableAPI(client)
+        self.manage = MetaManageAPI(client)
+        self.etc = EtcAPI(client)
 
 
 __all__ = [
