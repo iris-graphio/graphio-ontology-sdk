@@ -65,14 +65,14 @@ from graphio_sdk import GraphioClient
 client = GraphioClient(base_url="http://localhost:8080")
 
 # 생성
-client.insert(emp)
+client.ontology.insert(emp)
 
 # 수정
 emp.age = 31
-client.update(emp)
+client.ontology.update(emp)
 
 # 삭제
-client.delete(emp)
+client.ontology.delete(emp)
 ```
 
 ## SDK → Service 전달 규칙
