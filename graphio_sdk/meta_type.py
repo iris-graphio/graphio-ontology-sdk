@@ -235,6 +235,8 @@ class EtcAPI:
         response = self._client._get_session().get(
             url, timeout=self._client.timeout
         )
+
+        GraphioClient(base_url="http://0.0.0.0").meta_type.meta_type_manage
         response.raise_for_status()
         result = response.json()
         self._client._check_response(result, "get tag list")
