@@ -18,6 +18,10 @@ __author__ = "GraphIO Team"
 
 from graphio_sdk.client import GraphioClient
 from graphio_sdk.ontology.operators import QueryOp, Condition, LogicalCondition
+from graphio_sdk.ontology.object_type import ObjectTypeBase
+from graphio_sdk.ontology.query import ObjectSetQuery
+from graphio_sdk.ontology.edits import EditableObject, OntologyEditsBuilder
+from graphio_sdk.ontology.ontology import OntologyNamespace
 
 __all__ = [
     "GraphioClient",

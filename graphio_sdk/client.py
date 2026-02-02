@@ -5,9 +5,9 @@ import os
 
 import requests
 import weakref
-from typing import List, Dict, Any, Optional, Union, Tuple
+from typing import Dict, Any, Optional, Union, Tuple
 
-from graphio_sdk.ontology import OntologyNamespace
+from graphio_sdk.ontology.ontology import OntologyNamespace
 from graphio_sdk.meta_type import MetaTypeNamespace
 
 
