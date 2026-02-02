@@ -42,8 +42,9 @@ Documentation = "https://github.com/iris-graphio/graphio-ontology-sdk#readme"
 Repository = "https://github.com/iris-graphio/graphio-ontology-sdk"
 Issues = "https://github.com/iris-graphio/graphio-ontology-sdk/issues"
 
-[tool.setuptools]
-packages = ["graphio_sdk"]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["graphio_sdk*"]
 
 [tool.setuptools.package-data]
 "*" = ["py.typed"]
