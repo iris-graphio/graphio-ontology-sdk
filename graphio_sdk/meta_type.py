@@ -187,7 +187,7 @@ class EtcAPI:
         response.raise_for_status()
         result = response.json()
         self._client._check_response(result, "get tag list")
-        return result.get("status", [])
+        return result.get("data", [])
 
 
 # ============================
