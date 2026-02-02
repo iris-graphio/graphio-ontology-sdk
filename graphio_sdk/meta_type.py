@@ -19,7 +19,7 @@ class MetaTableAPI:
 
     def all_data(self, meta_type_id: str) -> List[Dict[str, Any]]:
         params: Dict[str, Any] = {
-            "meta_type_id": meta_type_id,
+            "metaTypeId": meta_type_id,
         }
         url = f"{self._client.api_base}/all-data"
         response = self._client._get_session().get(
