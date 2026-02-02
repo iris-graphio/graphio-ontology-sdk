@@ -35,16 +35,19 @@ class ObjectTypeBase:
     def where(cls, *conditions: Union['Condition', 'LogicalCondition']) -> 'ObjectSetQuery':
         """쿼리 시작 - where 조건으로"""
         from .query import ObjectSetQuery
-        return ObjectSetQuery(cls, cls._client).where(*conditions)
+        namespace = getattr(cls, "_ontology_namespace", None)
+        return ObjectSetQuery(cls, cls._client, namespace).where(*conditions)
 
     @classmethod
     def select(cls, *fields: str) -> 'ObjectSetQuery':
         """쿼리 시작 - select로"""
         from .query import ObjectSetQuery
-        return ObjectSetQuery(cls, cls._client).select(*fields)
+        namespace = getattr(cls, "_ontology_namespace", None)
+        return ObjectSetQuery(cls, cls._client, namespace).select(*fields)
 
     @classmethod
     def all(cls) -> 'ObjectSetQuery':
         """모든 객체 조회"""
         from .query import ObjectSetQuery
-        return ObjectSetQuery(cls, cls._client)
+        namespace = getattr(cls, "_ontology_namespace", None)
+        return ObjectSetQuery(cls, cls._client, namespace)

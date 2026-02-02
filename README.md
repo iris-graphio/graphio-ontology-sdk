@@ -24,7 +24,8 @@ Python 클라이언트 for Graphio Ontology Service
 
 ## 소개
 
-Graphio Ontology SDK는 GraphIO Ontology Service와 상호작용하기 위한 Python 클라이언트입니다. 직관적인 API를 제공하여 데이터 조회, 생성, 수정을 쉽게 수행할 수 있습니다.
+Graphio Ontology SDK는 GraphIO Ontology Service와 상호작용하기 위한 Python 클라이언트입니다.
+직관적인 API를 제공하여 데이터 조회, 생성, 수정을 쉽게 수행할 수 있습니다.
 
 ### 주요 기능
 
