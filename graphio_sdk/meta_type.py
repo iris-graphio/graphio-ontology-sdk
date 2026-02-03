@@ -4,6 +4,15 @@ MetaType 네임스페이스 - GraphIOClient와 함께 사용
 
 from typing import Any, Dict, List, TYPE_CHECKING
 
+from graphio_sdk.schema import (
+    MetaTypeDto,
+    MetaTypeInspectDto,
+    MetaTypePropertyResponseDto,
+    RawDataInfoResponseDto,
+    TagDto,
+    MappedRawDataResponseDto,
+)
+
 if TYPE_CHECKING:
     from graphio_sdk.client import GraphioClient
 
@@ -17,7 +26,7 @@ class MetaTableAPI:
     def __init__(self, client: "GraphioClient"):
         self._client = client
 
-    def all_data(self, meta_type_id: str) -> List[Dict[str, Any]]:
+    def all_data(self, meta_type_id: str) -> Dict[str, Any]:
         params: Dict[str, Any] = {
             "metaTypeId": meta_type_id,
         }
@@ -27,10 +36,13 @@ class MetaTableAPI:
         )
         response.raise_for_status()
         result = response.json()
+        data = result.get("data", [])
+        total_count = result.get("totalSize", None)
         self._client._check_response(result, "list all-data")
-        return result.get("data", [])
+        return {"data": data, "totalCount": total_count}
 
-    def meta_type_table(self, meta_type_id: str):
+    def meta_type_table(self, meta_type_id: str) -> Dict[str, Any]:
+        """GET /meta-type-table/{meta-type-id} : Map<String, Object>"""
         url = f"{self._client.api_base}/meta-type-table/{meta_type_id}"
         response = self._client._get_session().get(
             url, timeout=self._client.timeout
@@ -38,9 +50,12 @@ class MetaTableAPI:
         response.raise_for_status()
         result = response.json()
         self._client._check_response(result, "list meta type table")
-        return result.get("data", [])
+        return result.get("data", {})
 
-    def table_list(self, connection_instance_id: str, schema_name: str) -> List[Dict[str, Any]]:
+    def table_list(
+            self, connection_instance_id: str, schema_name: str
+    ) -> List[TagDto]:
+        """GET /table-list : List<TagDto>"""
         params: Dict[str, Any] = {
             "connection_instance_id": connection_instance_id,
             "schema_name": schema_name
@@ -52,15 +67,29 @@ class MetaTableAPI:
         response.raise_for_status()
         result = response.json()
         self._client._check_response(result, "list table from schema")
+        data = result.get("data", [])
+        return [TagDto.model_validate(item) for item in data] if isinstance(data, list) else []
+
+    def table_columns(self, *args: Any, **kwargs: Any) -> List[Dict[str, Any]]:
+        """GET /table-columns : List<Map<String, Object>> (구현 시 파라미터 추가)"""
+        url = f"{self._client.api_base}/table-columns"
+        response = self._client._get_session().get(
+            url, timeout=self._client.timeout, params=kwargs
+        )
+        response.raise_for_status()
+        result = response.json()
+        self._client._check_response(result, "table columns")
         return result.get("data", [])
 
-    def sampe_data_param(self, meta_type_id: str, page: int, size: int) -> List[Dict[str, Any]]:
+    def sample_data_param(
+            self, meta_type_id: str, page: int, size: int
+    ) -> List[Dict[str, Any]]:
         params: Dict[str, Any] = {
             "meta_type_id": meta_type_id,
             "page": page,
-            "sizw": size
+            "size": size
         }
-        url = f"{self._client.api_base}/sampe_data_param"
+        url = f"{self._client.api_base}/sample_data_param"
         response = self._client._get_session().get(
             url, params=params, timeout=self._client.timeout
         )
@@ -76,7 +105,8 @@ class MetaManageAPI:
     def __init__(self, client: "GraphioClient"):
         self._client = client
 
-    def list(self):
+    def list(self) -> List[MetaTypeDto]:
+        """GET / : List<MetaTypeDto>"""
         url = f"{self._client.api_base}/"
         response = self._client._get_session().get(
             url, timeout=self._client.timeout
@@ -84,9 +114,10 @@ class MetaManageAPI:
         response.raise_for_status()
         result = response.json()
         self._client._check_response(result, "list all-meta")
-        return result.get("data", [])
+        data = result.get("data", [])
+        return [MetaTypeDto.model_validate(item) for item in data] if isinstance(data, list) else []
 
-    def duplicate_check(self, meta_type_name: str):
+    def duplicate_check(self, meta_type_name: str) -> Dict[str: Any]:
         url = f"{self._client.api_base}/duplicate-check/{meta_type_name}"
         response = self._client._get_session().get(
             url, timeout=self._client.timeout
@@ -94,9 +125,13 @@ class MetaManageAPI:
         response.raise_for_status()
         result = response.json()
         self._client._check_response(result, "check meta_type name duplicate")
-        return result.get("status", [])
+        data = dict(result.get("data", result))
+        status = result.get("status", None)
+        return {"meta_type_id": data.get("id"), "status": status}
 
-    def raw_datas(self, meta_type_id: str, page: int, size: int) -> List[Dict[str, Any]]:
+    def raw_datas(
+            self, meta_type_id: str, page: int, size: int
+    ) -> List[MappedRawDataResponseDto]:
         params: Dict[str, Any] = {
             "meta_type_id": meta_type_id,
             "page": page,
@@ -108,10 +143,12 @@ class MetaManageAPI:
         )
         response.raise_for_status()
         result = response.json()
+        data = result.get("data", result)
         self._client._check_response(result, "list raw data by meta type id")
-        return result.get("data", [])
+        return [MappedRawDataResponseDto.model_validate(item) for item in data] if isinstance(data, list) else []
 
-    def owner(self):
+    def owner(self) -> List[str]:
+        """GET /owner : List<UUID>"""
         url = f"{self._client.api_base}/owners"
         response = self._client._get_session().get(
             url, timeout=self._client.timeout
@@ -119,12 +156,12 @@ class MetaManageAPI:
         response.raise_for_status()
         result = response.json()
         self._client._check_response(result, "list meta type owner")
-        return result.get("data", [])
+        data = result.get("data", [])
+        return [str(x) for x in data] if isinstance(data, list) else []
 
-    def kind_list(self, meta_type_kind: str) -> List[Dict[str, Any]]:
-        params: Dict[str, Any] = {
-            "meta_type_kind": meta_type_kind
-        }
+    def kind_list(self, meta_type_kind: str) -> List[MetaTypeInspectDto]:
+        """GET /kind-list : List<MetaTypeInspectDto>"""
+        params: Dict[str, Any] = {"meta_type_kind": meta_type_kind}
         url = f"{self._client.api_base}/kind_list"
         response = self._client._get_session().get(
             url, params=params, timeout=self._client.timeout
@@ -132,9 +169,13 @@ class MetaManageAPI:
         response.raise_for_status()
         result = response.json()
         self._client._check_response(result, "list meta type by meta type kind")
-        return result.get("data", [])
+        data = result.get("data", [])
+        return [MetaTypeInspectDto.model_validate(item) for item in data] if isinstance(data, list) else []
 
-    def inspect_property(self, meta_type_id: str):
+    def inspect_property(
+            self, meta_type_id: str
+    ) -> List[MetaTypePropertyResponseDto]:
+        """GET /inspect/property/{meta-type-id} : List<MetaTypePropertyResponseDto>"""
         url = f"{self._client.api_base}/inspect/property/{meta_type_id}"
         response = self._client._get_session().get(
             url, timeout=self._client.timeout
@@ -142,9 +183,11 @@ class MetaManageAPI:
         response.raise_for_status()
         result = response.json()
         self._client._check_response(result, "meta type propreties")
-        return result.get("data", [])
+        data = result.get("data", [])
+        return [MetaTypePropertyResponseDto.model_validate(item) for item in data] if isinstance(data, list) else []
 
-    def inspect_profiling(self, meta_type_id: str):
+    def inspect_profiling(self, meta_type_id: str) -> List[Dict[str, Any]]:
+        """GET /inspect/profiling/{meta-type-id} : List<Map<String, Object>>"""
         url = f"{self._client.api_base}/inspect/profiling/{meta_type_id}"
         response = self._client._get_session().get(
             url, timeout=self._client.timeout
@@ -154,7 +197,10 @@ class MetaManageAPI:
         self._client._check_response(result, "meta type profiling")
         return result.get("data", [])
 
-    def inspect_data_source(self, meta_type_id: str):
+    def inspect_data_source(
+            self, meta_type_id: str
+    ) -> List[RawDataInfoResponseDto]:
+        """GET /inspect/data-source/{meta-type-id} : List<RawDataInfoResponseDto>"""
         url = f"{self._client.api_base}/inspect/data-source/{meta_type_id}"
         response = self._client._get_session().get(
             url, timeout=self._client.timeout
@@ -162,9 +208,11 @@ class MetaManageAPI:
         response.raise_for_status()
         result = response.json()
         self._client._check_response(result, "meta type data_source")
-        return result.get("data", [])
+        data = result.get("data", [])
+        return [RawDataInfoResponseDto.model_validate(item) for item in data] if isinstance(data, list) else []
 
-    def inspect_basic(self, meta_type_id: str):
+    def inspect_basic(self, meta_type_id: str) -> MetaTypeInspectDto:
+        """GET /inspect/basic/{meta-type-id} : MetaTypeInspectDto"""
         url = f"{self._client.api_base}/inspect/basic/{meta_type_id}"
         response = self._client._get_session().get(
             url, timeout=self._client.timeout
@@ -172,24 +220,26 @@ class MetaManageAPI:
         response.raise_for_status()
         result = response.json()
         self._client._check_response(result, "meta type basic inspect")
-        return result.get("data", [])
+        data = result.get("data", result)
+        return MetaTypeInspectDto.model_validate(data) if isinstance(data, dict) else MetaTypeInspectDto.model_validate(
+            {})
 
 
 class EtcAPI:
     def __init__(self, client: "GraphioClient"):
         self._client = client
 
-    def tag_list(self):
+    def tag_list(self) -> List[TagDto]:
+        """GET /tag-list : List<TagDto>"""
         url = f"{self._client.api_base}/tag-list"
         response = self._client._get_session().get(
             url, timeout=self._client.timeout
         )
-
-        GraphioClient(base_url="http://0.0.0.0").meta_type.meta_type_manage
         response.raise_for_status()
         result = response.json()
         self._client._check_response(result, "get tag list")
-        return result.get("data", [])
+        data = result.get("data", [])
+        return [TagDto.model_validate(item) for item in data] if isinstance(data, list) else []
 
 
 # ============================
@@ -198,7 +248,7 @@ class EtcAPI:
 class MetaTypeNamespace:
     """
     client.meta_type 네임스페이스.
-    GraphioClient와 함께 사용: client = GraphioClient(); client.meta_type.data.list(...)
+    GraphIOClient와 함께 사용: client.meta_type.table_data.list() 등
     """
 
     def __init__(self, client: "GraphioClient"):
