@@ -117,7 +117,7 @@ class MetaManageAPI:
         data = result.get("data", [])
         return [MetaTypeDto.model_validate(item) for item in data] if isinstance(data, list) else []
 
-    def duplicate_check(self, meta_type_name: str) -> Dict[str: Any]:
+    def duplicate_check(self, meta_type_name: str) -> Dict[str, Any]:
         url = f"{self._client.api_base}/duplicate-check/{meta_type_name}"
         response = self._client._get_session().get(
             url, timeout=self._client.timeout
