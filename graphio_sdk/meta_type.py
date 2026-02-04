@@ -92,7 +92,7 @@ class MetaTableAPI:
             "page": page,
             "size": size
         }
-        url = f"{self._client.api_base}/sample_data_param"
+        url = f"{self._client.api_base}/sample-data-param"
         response = self._client._get_session().get(
             url, params=params, timeout=self._client.timeout
         )
@@ -110,7 +110,7 @@ class MetaManageAPI:
 
     def list(self) -> List[MetaTypeDto]:
         """GET / : List<MetaTypeDto>"""
-        url = f"{self._client.api_base}/"
+        url = f"{self._client.api_base}"
         response = self._client._get_session().get(
             url, timeout=self._client.timeout
         )
@@ -152,7 +152,7 @@ class MetaManageAPI:
 
     def owner(self) -> List[str]:
         """GET /owner : List<UUID>"""
-        url = f"{self._client.api_base}/owners"
+        url = f"{self._client.api_base}/owner"
         response = self._client._get_session().get(
             url, timeout=self._client.timeout
         )
@@ -167,7 +167,7 @@ class MetaManageAPI:
         params: Dict[str, Any] = {
             "metaTypeKind": meta_type_kind
         }
-        url = f"{self._client.api_base}/kind_list"
+        url = f"{self._client.api_base}/kind-list"
         response = self._client._get_session().get(
             url, params=params, timeout=self._client.timeout
         )
@@ -213,8 +213,7 @@ class MetaManageAPI:
         response.raise_for_status()
         result = response.json()
         self._client._check_response(result, "meta type data_source")
-        data = result.get("data", [])
-        return [RawDataInfoResponseDto.model_validate(item) for item in data] if isinstance(data, list) else []
+        return [RawDataInfoResponseDto.model_validate(item) for item in result] if isinstance(result, list) else []
 
     def inspect_basic(self, meta_type_id: str) -> MetaTypeInspectDto:
         """GET /inspect/basic/{meta-type-id} : MetaTypeInspectDto"""
