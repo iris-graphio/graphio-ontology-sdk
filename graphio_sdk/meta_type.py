@@ -53,12 +53,12 @@ class MetaTableAPI:
         return result.get("data", {})
 
     def table_list(
-            self, connection_instance_id: str, meta_type_kind: str
+            self, connection_instance_id: str, schema_name: str, meta_type_kind: str
     ) -> List[TagDto]:
         """GET /table-list : List<TagDto>"""
         params: Dict[str, Any] = {
             "connectionInstanceId": connection_instance_id,
-            "schemaName": "",
+            "schemaName": schema_name,
             "metaTypeKind": meta_type_kind
         }
         url = f"{self._client.api_base}/table-list"
@@ -71,11 +71,15 @@ class MetaTableAPI:
         data = result.get("data", [])
         return [TagDto.model_validate(item) for item in data] if isinstance(data, list) else []
 
-    def table_columns(self, *args: Any, **kwargs: Any) -> List[Dict[str, Any]]:
-        """GET /table-columns : List<Map<String, Object>> (구현 시 파라미터 추가)"""
+    def table_columns(self, connection_instance_id: str, schema_name: str, table_name: str) -> List[Dict[str, Any]]:
+        params: Dict[str, Any] = {
+            "connectionInstanceId": connection_instance_id,
+            "schema_name": schema_name,
+            "table_name": table_name
+        }
         url = f"{self._client.api_base}/table-columns"
         response = self._client._get_session().get(
-            url, timeout=self._client.timeout, params=kwargs
+            url, timeout=self._client.timeout, params=params
         )
         response.raise_for_status()
         result = response.json()
