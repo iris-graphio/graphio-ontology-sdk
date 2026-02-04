@@ -58,6 +58,7 @@ class MetaTableAPI:
         """GET /table-list : List<TagDto>"""
         params: Dict[str, Any] = {
             "connectionInstanceId": connection_instance_id,
+            "schemaName": "",
             "metaTypeKind": meta_type_kind
         }
         url = f"{self._client.api_base}/table-list"
