@@ -53,12 +53,12 @@ class MetaTableAPI:
         return result.get("data", {})
 
     def table_list(
-            self, connection_instance_id: str, schema_name: str
+            self, connection_instance_id: str, meta_type_kind: str
     ) -> List[TagDto]:
         """GET /table-list : List<TagDto>"""
         params: Dict[str, Any] = {
-            "connection_instance_id": connection_instance_id,
-            "schema_name": schema_name
+            "connectionInstanceId": connection_instance_id,
+            "metaTypeKind": meta_type_kind
         }
         url = f"{self._client.api_base}/table-list"
         response = self._client._get_session().get(
@@ -85,7 +85,7 @@ class MetaTableAPI:
             self, meta_type_id: str, page: int, size: int
     ) -> List[Dict[str, Any]]:
         params: Dict[str, Any] = {
-            "meta_type_id": meta_type_id,
+            "metaTypeId": meta_type_id,
             "page": page,
             "size": size
         }
@@ -133,7 +133,7 @@ class MetaManageAPI:
             self, meta_type_id: str, page: int, size: int
     ) -> List[MappedRawDataResponseDto]:
         params: Dict[str, Any] = {
-            "meta_type_id": meta_type_id,
+            "metaTypeId": meta_type_id,
             "page": page,
             "size": size
         }
@@ -161,7 +161,7 @@ class MetaManageAPI:
 
     def kind_list(self, meta_type_kind: str) -> List[MetaTypeInspectDto]:
         """GET /kind-list : List<MetaTypeInspectDto>"""
-        params: Dict[str, Any] = {"meta_type_kind": meta_type_kind}
+        params: Dict[str, Any] = {"metaTypeKind": meta_type_kind}
         url = f"{self._client.api_base}/kind_list"
         response = self._client._get_session().get(
             url, params=params, timeout=self._client.timeout
