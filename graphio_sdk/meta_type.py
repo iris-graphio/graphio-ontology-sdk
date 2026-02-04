@@ -92,7 +92,7 @@ class MetaTableAPI:
             "page": page,
             "size": size
         }
-        url = f"{self._client.api_base}/sample-data-param"
+        url = f"{self._client.api_base}/inspect/sample-data-param"
         response = self._client._get_session().get(
             url, params=params, timeout=self._client.timeout
         )
@@ -174,8 +174,7 @@ class MetaManageAPI:
         response.raise_for_status()
         result = response.json()
         self._client._check_response(result, "list meta type by meta type kind")
-        data = result.get("data", [])
-        return [MetaTypeInspectDto.model_validate(item) for item in data] if isinstance(data, list) else []
+        return [MetaTypeInspectDto.model_validate(item) for item in result] if isinstance(result, list) else []
 
     def inspect_property(
             self, meta_type_id: str
@@ -224,8 +223,7 @@ class MetaManageAPI:
         response.raise_for_status()
         result = response.json()
         self._client._check_response(result, "meta type basic inspect")
-        data = result.get("data", result)
-        return MetaTypeInspectDto.model_validate(data) if isinstance(data, dict) else MetaTypeInspectDto.model_validate(
+        return MetaTypeInspectDto.model_validate(result) if isinstance(result, dict) else MetaTypeInspectDto.model_validate(
             {})
 
 
