@@ -16,12 +16,13 @@ Example:
 __version__ = "0.1.0"
 __author__ = "GraphIO Team"
 
-from .client import GraphioClient
-from .operators import QueryOp, Condition, LogicalCondition
-from .object_type import ObjectTypeBase
-from .query import ObjectSetQuery
-from .edits import EditableObject, OntologyEditsBuilder
-from .ontology import OntologyNamespace
+from graphio_sdk.client import GraphioClient
+from graphio_sdk.ontology.operators import QueryOp, Condition, LogicalCondition
+from graphio_sdk.ontology.object_type import ObjectTypeBase
+from graphio_sdk.ontology.query import ObjectSetQuery
+from graphio_sdk.ontology.edits import EditableObject, OntologyEditsBuilder
+from graphio_sdk.ontology.ontology import OntologyNamespace
+from graphio_sdk.meta_type import MetaTypeNamespace
 
 __all__ = [
     "GraphioClient",
@@ -33,4 +34,5 @@ __all__ = [
     "EditableObject",
     "OntologyEditsBuilder",
     "OntologyNamespace",
+    "MetaTypeNamespace",
 ]

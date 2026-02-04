@@ -26,6 +26,7 @@ classifiers = [
 
 dependencies = [
     "requests>=2.25.0",
+    "pydantic>=2.0.0",
 ]
 
 [project.optional-dependencies]
@@ -35,9 +36,6 @@ dev = [
     "black>=23.0.0",
     "flake8>=6.0.0",
 ]
-mq = [
-    "pika>=1.3.0",
-]
 
 [project.urls]
 Homepage = "https://github.com/iris-graphio/graphio-ontology-sdk"
@@ -45,8 +43,9 @@ Documentation = "https://github.com/iris-graphio/graphio-ontology-sdk#readme"
 Repository = "https://github.com/iris-graphio/graphio-ontology-sdk"
 Issues = "https://github.com/iris-graphio/graphio-ontology-sdk/issues"
 
-[tool.setuptools]
-packages = ["graphio_sdk"]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["graphio_sdk*"]
 
 [tool.setuptools.package-data]
 "*" = ["py.typed"]
