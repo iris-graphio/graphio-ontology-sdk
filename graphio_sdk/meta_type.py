@@ -108,6 +108,7 @@ class MetaManageAPI:
 
     def __init__(self, client: "GraphioClient"):
         self._client = client
+        self._url = f"{self._client.api_base}/meta-type"
 
     def list(self) -> List[MetaTypeDto]:
         """GET / : List<MetaTypeDto>"""
@@ -230,6 +231,7 @@ class MetaManageAPI:
 class EtcAPI:
     def __init__(self, client: "GraphioClient"):
         self._client = client
+        self._url = f"{self._client.api_base}/meta-type"
 
     def tag_list(self) -> List[TagDto]:
         """GET /tag-list : List<TagDto>"""
