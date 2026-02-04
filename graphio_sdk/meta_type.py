@@ -211,7 +211,6 @@ class MetaManageAPI:
         )
         response.raise_for_status()
         result = response.json()
-        self._client._check_response(result, "meta type data_source")
         return [RawDataInfoResponseDto.model_validate(item) for item in result] if isinstance(result, list) else []
 
     def inspect_basic(self, meta_type_id: str) -> MetaTypeInspectDto:
