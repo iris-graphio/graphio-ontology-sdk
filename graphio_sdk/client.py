@@ -52,7 +52,7 @@ class GraphioClient:
             base_url = os.getenv("ONTOLOGY_SERVICE", "http://ontology-svc:8080")
         
         self.base_url = base_url.rstrip('/')
-        self.api_base = f"{self.base_url}/graphio/v1/meta-type"
+        self.api_base = f"{self.base_url}/graphio/v1"
 
         # timeout 처리: int면 (connect_timeout, read_timeout) 튜플로 변환
         if isinstance(timeout, int):

@@ -25,12 +25,13 @@ class MetaTableAPI:
 
     def __init__(self, client: "GraphioClient"):
         self._client = client
+        self._url = f"{self._client.api_base}/meta-type"
 
     def all_data(self, meta_type_id: str) -> Dict[str, Any]:
         params: Dict[str, Any] = {
             "metaTypeId": meta_type_id,
         }
-        url = f"{self._client.api_base}/all-data"
+        url = f"{self._url}/all-data"
         response = self._client._get_session().get(
             url, params=params, timeout=self._client.timeout
         )
@@ -43,7 +44,7 @@ class MetaTableAPI:
 
     def meta_type_table(self, meta_type_id: str) -> Dict[str, Any]:
         """GET /meta-type-table/{meta-type-id} : Map<String, Object>"""
-        url = f"{self._client.api_base}/meta-type-table/{meta_type_id}"
+        url = f"{self._url}/meta-type-table/{meta_type_id}"
         response = self._client._get_session().get(
             url, timeout=self._client.timeout
         )
@@ -60,7 +61,7 @@ class MetaTableAPI:
             "schemaName": schema_name,
             "metaTypeKind": meta_type_kind
         }
-        url = f"{self._client.api_base}/table-list"
+        url = f"{self._url}/table-list"
         response = self._client._get_session().get(
             url, params=params, timeout=self._client.timeout
         )
@@ -75,7 +76,7 @@ class MetaTableAPI:
             "schemaName": schema_name,
             "tableName": table_name
         }
-        url = f"{self._client.api_base}/table-columns"
+        url = f"{self._url}/table-columns"
         response = self._client._get_session().get(
             url, timeout=self._client.timeout, params=params
         )
@@ -92,7 +93,7 @@ class MetaTableAPI:
             "page": page,
             "size": size
         }
-        url = f"{self._client.api_base}/inspect/sample-data-param"
+        url = f"{self._url}/inspect/sample-data-param"
         response = self._client._get_session().get(
             url, params=params, timeout=self._client.timeout
         )
@@ -110,7 +111,7 @@ class MetaManageAPI:
 
     def list(self) -> List[MetaTypeDto]:
         """GET / : List<MetaTypeDto>"""
-        url = f"{self._client.api_base}"
+        url = f"{self._url}"
         response = self._client._get_session().get(
             url, timeout=self._client.timeout
         )
@@ -121,7 +122,7 @@ class MetaManageAPI:
         return [MetaTypeDto.model_validate(item) for item in data] if isinstance(data, list) else []
 
     def duplicate_check(self, meta_type_name: str) -> Dict[str, Any]:
-        url = f"{self._client.api_base}/duplicate-check/{meta_type_name}"
+        url = f"{self._url}/duplicate-check/{meta_type_name}"
         response = self._client._get_session().get(
             url, timeout=self._client.timeout
         )
@@ -140,7 +141,7 @@ class MetaManageAPI:
             "page": page,
             "size": size
         }
-        url = f"{self._client.api_base}/raw-datas"
+        url = f"{self._url}/raw-datas"
         response = self._client._get_session().get(
             url, params=params, timeout=self._client.timeout
         )
@@ -152,7 +153,7 @@ class MetaManageAPI:
 
     def owner(self) -> List[str]:
         """GET /owner : List<UUID>"""
-        url = f"{self._client.api_base}/owner"
+        url = f"{self._url}/owner"
         response = self._client._get_session().get(
             url, timeout=self._client.timeout
         )
@@ -167,7 +168,7 @@ class MetaManageAPI:
         params: Dict[str, Any] = {
             "metaTypeKind": meta_type_kind
         }
-        url = f"{self._client.api_base}/kind-list"
+        url = f"{self._url}/kind-list"
         response = self._client._get_session().get(
             url, params=params, timeout=self._client.timeout
         )
@@ -180,7 +181,7 @@ class MetaManageAPI:
             self, meta_type_id: str
     ) -> List[MetaTypePropertyResponseDto]:
         """GET /inspect/property/{meta-type-id} : List<MetaTypePropertyResponseDto>"""
-        url = f"{self._client.api_base}/inspect/property/{meta_type_id}"
+        url = f"{self._url}/inspect/property/{meta_type_id}"
         response = self._client._get_session().get(
             url, timeout=self._client.timeout
         )
@@ -192,7 +193,7 @@ class MetaManageAPI:
 
     def inspect_profiling(self, meta_type_id: str) -> List[Dict[str, Any]]:
         """GET /inspect/profiling/{meta-type-id} : List<Map<String, Object>>"""
-        url = f"{self._client.api_base}/inspect/profiling/{meta_type_id}"
+        url = f"{self._url}/inspect/profiling/{meta_type_id}"
         response = self._client._get_session().get(
             url, timeout=self._client.timeout
         )
@@ -205,7 +206,7 @@ class MetaManageAPI:
             self, meta_type_id: str
     ) -> List[RawDataInfoResponseDto]:
         """GET /inspect/data-source/{meta-type-id} : List<RawDataInfoResponseDto>"""
-        url = f"{self._client.api_base}/inspect/data-source/{meta_type_id}"
+        url = f"{self._url}/inspect/data-source/{meta_type_id}"
         response = self._client._get_session().get(
             url, timeout=self._client.timeout
         )
@@ -215,7 +216,7 @@ class MetaManageAPI:
 
     def inspect_basic(self, meta_type_id: str) -> MetaTypeInspectDto:
         """GET /inspect/basic/{meta-type-id} : MetaTypeInspectDto"""
-        url = f"{self._client.api_base}/inspect/basic/{meta_type_id}"
+        url = f"{self._url}/inspect/basic/{meta_type_id}"
         response = self._client._get_session().get(
             url, timeout=self._client.timeout
         )
@@ -232,7 +233,7 @@ class EtcAPI:
 
     def tag_list(self) -> List[TagDto]:
         """GET /tag-list : List<TagDto>"""
-        url = f"{self._client.api_base}/tag-list"
+        url = f"{self._url}/tag-list"
         response = self._client._get_session().get(
             url, timeout=self._client.timeout
         )
