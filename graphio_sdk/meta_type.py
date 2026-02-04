@@ -54,8 +54,7 @@ class MetaTableAPI:
 
     def table_list(
             self, connection_instance_id: str, schema_name: str, meta_type_kind: str
-    ) -> List[TagDto]:
-        """GET /table-list : List<TagDto>"""
+    ) -> List[str]:
         params: Dict[str, Any] = {
             "connectionInstanceId": connection_instance_id,
             "schemaName": schema_name,
@@ -68,8 +67,7 @@ class MetaTableAPI:
         response.raise_for_status()
         result = response.json()
         self._client._check_response(result, "list table from schema")
-        data = result.get("data", [])
-        return [TagDto.model_validate(item) for item in data] if isinstance(data, list) else []
+        return result.get("data", [])
 
     def table_columns(self, connection_instance_id: str, schema_name: str, table_name: str) -> List[Dict[str, Any]]:
         params: Dict[str, Any] = {
