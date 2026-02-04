@@ -72,8 +72,8 @@ class MetaTableAPI:
     def table_columns(self, connection_instance_id: str, schema_name: str, table_name: str) -> List[Dict[str, Any]]:
         params: Dict[str, Any] = {
             "connectionInstanceId": connection_instance_id,
-            "schema_name": schema_name,
-            "table_name": table_name
+            "schemaName": schema_name,
+            "tableName": table_name
         }
         url = f"{self._client.api_base}/table-columns"
         response = self._client._get_session().get(
@@ -164,7 +164,9 @@ class MetaManageAPI:
 
     def kind_list(self, meta_type_kind: str) -> List[MetaTypeInspectDto]:
         """GET /kind-list : List<MetaTypeInspectDto>"""
-        params: Dict[str, Any] = {"metaTypeKind": meta_type_kind}
+        params: Dict[str, Any] = {
+            "metaTypeKind": meta_type_kind
+        }
         url = f"{self._client.api_base}/kind_list"
         response = self._client._get_session().get(
             url, params=params, timeout=self._client.timeout
