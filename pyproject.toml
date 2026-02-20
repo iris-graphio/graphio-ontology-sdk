@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "graphio-sdk"
-version = "0.1.0"
+version = "1.0.0"
 description = "GraphIO Ontology SDK - Palantir Foundry 스타일 Python 클라이언트"
 readme = "README.md"
 requires-python = ">=3.11"
