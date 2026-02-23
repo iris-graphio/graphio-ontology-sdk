@@ -47,6 +47,9 @@ client = GraphioClient()
 # ObjectType 로드 및 쿼리
 Employee = client.ontology.get_object_type("Employee")
 employees = Employee.where(Employee.age > 30).select("name", "age").execute()
+
+# MetaType list 출력 API 실행
+meta_type_list = client.meta_type.manage.list()
 ```
 
 ### 🔄 자동 리소스 관리
@@ -70,7 +73,13 @@ pip install graphio-sdk
 ### 소스에서 설치
 
 ```bash
-git clone https://github.com/your-org/graphio-sdk.git
+# 최신 버전
+git clone https://github.com/iris-graphio/graphio-ontology-sdk.git
+# v0.1.0
+git clone https://github.com/iris-graphio/graphio-ontology-sdk.git@v0.1.0
+# v1.0.0
+git clone https://github.com/iris-graphio/graphio-ontology-sdk.git@v1.0.0
+
 cd graphio-sdk
 pip install -e .
 ```

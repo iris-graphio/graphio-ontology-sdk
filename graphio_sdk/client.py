@@ -8,7 +8,7 @@ import weakref
 from typing import Dict, Any, Optional, Union, Tuple
 
 from graphio_sdk.ontology.ontology import OntologyNamespace
-from graphio_sdk.meta_type import MetaTypeNamespace
+from graphio_sdk.data_pipline.meta_type import MetaTypeNamespace
 
 
 class GraphioClient:
