@@ -8,7 +8,10 @@ import weakref
 from typing import Dict, Any, Optional, Union, Tuple
 
 from graphio_sdk.ontology.ontology import OntologyNamespace
+from graphio_sdk.ontology.action_type import ActionTypeNamespace
+from graphio_sdk.ontology.automation import AutomationNamespace
 from graphio_sdk.data_pipline.meta_type import MetaTypeNamespace
+from graphio_sdk.knowledge_graph.knowledge_graph import KnowledgeGraphNamespace
 
 
 class GraphioClient:
@@ -63,6 +66,9 @@ class GraphioClient:
         self._session: Optional[requests.Session] = None
         self._closed = False
         self.ontology = OntologyNamespace(self)
+        self.action_type = ActionTypeNamespace(self)
+        self.automation = AutomationNamespace(self)
+        self.knowledge_graph = KnowledgeGraphNamespace(self)
         self.meta_type = MetaTypeNamespace(self)
 
         # 가비지 컬렉션 시 자동 정리 등록
