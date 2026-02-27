@@ -423,6 +423,167 @@ def example_korean_object_types():
         traceback.print_exc()
 
 
+def example_action_type_detail():
+    """예제 9: ActionType 상세 조회 (이름 기반)"""
+    print("\n" + "=" * 80)
+    print("예제 9: ActionType 상세 조회")
+    print("=" * 80)
+
+    action_type_name = "action_is_action_isnot_action"
+
+    try:
+        detail = client.action_type.detail(action_type_name)
+        print(f"✓ 조회 성공: {action_type_name}")
+        print(f"  - id: {detail.get('id')}")
+        print(f"  - name: {detail.get('name')}")
+        print(f"  - rules 수: {len(detail.get('rules', []))}")
+    except Exception as e:
+        print(f"✗ 에러: {e}")
+
+
+def example_action_type_execute_by_name():
+    """예제 10: ActionType 수동 실행 (이름 기반)"""
+    print("\n" + "=" * 80)
+    print("예제 10: ActionType 수동 실행")
+    print("=" * 80)
+
+    action_type_name = "action_is_action_isnot_action"
+
+    try:
+        result = client.action_type.execute_by_name(action_type_name)
+        print(f"✓ 실행 성공: {action_type_name}")
+        print(f"  - status: {result.get('status')}")
+        print(f"  - execution_id: {result.get('execution_id')}")
+    except Exception as e:
+        print(f"✗ 에러: {e}")
+
+
+def example_automation_detail():
+    """예제 11: Automation 상세 조회 (이름 기반)"""
+    print("\n" + "=" * 80)
+    print("예제 11: Automation 상세 조회")
+    print("=" * 80)
+
+    automation_name = "automation_manual_test_2602252"
+
+    try:
+        detail = client.automation.detail(automation_name)
+        print(f"✓ 조회 성공: {automation_name}")
+        print(f"  - id: {detail.get('id')}")
+        print(f"  - name: {detail.get('name')}")
+        action_groups = detail.get("actionGroups", {})
+        nodes = action_groups.get("nodes", []) if isinstance(action_groups, dict) else []
+        print(f"  - action node 수: {len(nodes)}")
+    except Exception as e:
+        print(f"✗ 에러: {e}")
+
+
+def example_automation_set_active_by_name():
+    """예제 12: Automation 활성화 (이름 기반)"""
+    print("\n" + "=" * 80)
+    print("예제 12: Automation 활성화")
+    print("=" * 80)
+
+    automation_name = "automation_manual_test_2602252"
+
+    try:
+        result = client.automation.set_active_by_name(automation_name, active=True)
+        print(f"✓ 활성화 성공: {automation_name}")
+        print(f"  - status: {result.get('status')}")
+        print(f"  - active: {result.get('active')}")
+    except Exception as e:
+        print(f"✗ 에러: {e}")
+
+
+def example_automation_execute_by_name():
+    """예제 13: Automation 실행 (이름 기반)"""
+    print("\n" + "=" * 80)
+    print("예제 13: Automation 실행")
+    print("=" * 80)
+
+    automation_name = "automation_manual_test_2602252"
+
+    try:
+        result = client.automation.execute_by_name(automation_name)
+        print(f"✓ 실행 성공: {automation_name}")
+        print(f"  - status: {result.get('status')}")
+        print(f"  - execution_id: {result.get('execution_id')}")
+    except Exception as e:
+        print(f"✗ 에러: {e}")
+
+
+def example_knowledge_graph_by_object_type_id():
+    """예제 14: KnowledgeGraph 조회 (ObjectType ID + hop)"""
+    print("\n" + "=" * 80)
+    print("예제 14: KnowledgeGraph 조회 (ObjectType ID + hop)")
+    print("=" * 80)
+
+    object_type_id = "e82c5c6d-dbdf-47fc-b5fd-744f1b9d6d17"
+    hop = 1
+
+    try:
+        graph = client.knowledge_graph.graph_by_object_type_id(object_type_id, hop=hop)
+        nodes = graph.get("nodes", [])
+        edges = graph.get("edges", [])
+        print(f"✓ 조회 성공: object_type_id={object_type_id}, hop={hop}")
+        print(f"  - nodes: {len(nodes)}")
+        print(f"  - edges: {len(edges)}")
+    except Exception as e:
+        print(f"✗ 에러: {e}")
+
+
+def example_knowledge_graph_by_object_type_name():
+    """예제 15: KnowledgeGraph 조회 (ObjectType 이름 + hop)"""
+    print("\n" + "=" * 80)
+    print("예제 15: KnowledgeGraph 조회 (ObjectType 이름 + hop)")
+    print("=" * 80)
+
+    object_type_name = "용역계약업체"
+    hop = 1
+
+    try:
+        graph = client.knowledge_graph.graph_by_object_type_name(object_type_name, hop=hop)
+        nodes = graph.get("nodes", [])
+        edges = graph.get("edges", [])
+        print(f"✓ 조회 성공: object_type_name={object_type_name}, hop={hop}")
+        print(f"  - nodes: {len(nodes)}")
+        print(f"  - edges: {len(edges)}")
+    except Exception as e:
+        print(f"✗ 에러: {e}")
+
+
+def example_knowledge_graph_by_object_and_link_types():
+    """예제 16: KnowledgeGraph 조회 (ObjectType list + LinkType list)"""
+    print("\n" + "=" * 80)
+    print("예제 16: KnowledgeGraph 조회 (ObjectType list + LinkType list)")
+    print("=" * 80)
+
+    object_type_id_list = [
+        "e82c5c6d-dbdf-47fc-b5fd-744f1b9d6d17",
+        "ee58e6c0-3786-48d0-97c4-366b0fc87ece",
+    ]
+    link_type_id_list = [
+        "1f3a72cd-60fe-40b9-b02e-1c49d052d103",
+    ]
+
+    try:
+        # element_id_list는 전달하지 않으면 자동으로 []가 사용됩니다.
+        graph = client.knowledge_graph.graph_by_object_and_link_types(
+            object_type_id_list=object_type_id_list,
+            link_type_id_list=link_type_id_list,
+        )
+        nodes = graph.get("nodes", [])
+        edges = graph.get("edges", [])
+        print("✓ 조회 성공")
+        print(f"  - object_type_id_list: {len(object_type_id_list)}개")
+        print(f"  - link_type_id_list: {len(link_type_id_list)}개")
+        print(f"  - nodes: {len(nodes)}")
+        print(f"  - edges: {len(edges)}")
+    except Exception as e:
+        print(f"✗ 에러: {e}")
+
+
+
 if __name__ == "__main__":
     print("\n" + "=" * 80)
     print("GraphIO Ontology SDK - 실제 데이터 조회 예제")
@@ -439,6 +600,14 @@ if __name__ == "__main__":
     # example_multiple_object_types()
     # example_error_handling()
     # example_korean_object_types()
+    # example_action_type_detail()
+    # example_action_type_execute_by_name()
+    # example_automation_detail()
+    # example_automation_set_active_by_name()
+    # example_automation_execute_by_name()
+    example_knowledge_graph_by_object_type_id()
+    example_knowledge_graph_by_object_type_name()
+    example_knowledge_graph_by_object_and_link_types()
 
     print("\n" + "=" * 80)
     print("모든 예제 완료!")
