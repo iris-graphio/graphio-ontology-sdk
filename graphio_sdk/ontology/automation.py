@@ -39,17 +39,21 @@ class AutomationNamespace:
         self._client._check_response(result, "automation detail")
         return result.get("data", {})
 
-    def set_active(self, automation_id: str, active: bool = True) -> Dict[str, Optional[Any]]:
+    def set_active_by_name(self, name: str, active: bool = True) -> Dict[str, Optional[Any]]:
         """
-        Automation 활성/비활성 (ID 기반).
+        Automation 활성/비활성 (이름 기반).
 
         Args:
-            automation_id: Automation ID(UUID)
+            name: Automation 이름
             active: 활성화 여부
 
         Returns:
             {"status": bool, "active": bool | None}
         """
+        automation = self.detail(name)
+        automation_id = automation.get("id")
+        if not automation_id:
+            raise ValueError(f"Automation id를 찾을 수 없습니다. name={name}")
         url = f"{self._url}/{automation_id}/active"
         response = self._client._get_session().post(
             url,
@@ -65,35 +69,20 @@ class AutomationNamespace:
             "active": result.get("data"),
         }
 
-    def set_active_by_name(self, name: str, active: bool = True) -> Dict[str, Optional[Any]]:
+    def execute_by_name(self, name: str) -> Dict[str, Optional[Any]]:
         """
-        Automation 활성/비활성 (이름 기반).
-
-        내부적으로 detail(name) -> set_active(automation_id) 순서로 호출합니다.
+        Automation 수동 실행 (이름 기반).
 
         Args:
             name: Automation 이름
-            active: 활성화 여부
 
         Returns:
-            {"status": bool, "active": bool | None}
+            {"status": bool, "execution_id": str | None}
         """
         automation = self.detail(name)
         automation_id = automation.get("id")
         if not automation_id:
             raise ValueError(f"Automation id를 찾을 수 없습니다. name={name}")
-        return self.set_active(automation_id, active=active)
-
-    def execute(self, automation_id: str) -> Dict[str, Optional[Any]]:
-        """
-        Automation 수동 실행 (ID 기반).
-
-        Args:
-            automation_id: Automation ID(UUID)
-
-        Returns:
-            {"status": bool, "execution_id": str | None}
-        """
         url = f"{self._url}/{automation_id}/execute"
         response = self._client._get_session().post(url, timeout=self._client.timeout)
         response.raise_for_status()
@@ -103,24 +92,6 @@ class AutomationNamespace:
             "status": result.get("status"),
             "execution_id": result.get("data"),
         }
-
-    def execute_by_name(self, name: str) -> Dict[str, Optional[Any]]:
-        """
-        Automation 수동 실행 (이름 기반).
-
-        내부적으로 detail(name) -> execute(automation_id) 순서로 호출합니다.
-
-        Args:
-            name: Automation 이름
-
-        Returns:
-            {"status": bool, "execution_id": str | None}
-        """
-        automation = self.detail(name)
-        automation_id = automation.get("id")
-        if not automation_id:
-            raise ValueError(f"Automation id를 찾을 수 없습니다. name={name}")
-        return self.execute(automation_id)
 
 
 __all__ = ["AutomationNamespace"]

@@ -512,28 +512,8 @@ def example_automation_execute_by_name():
         print(f"✗ 에러: {e}")
 
 
-def example_knowledge_graph_by_object_type_id():
-    """예제 14: KnowledgeGraph 조회 (ObjectType ID + hop)"""
-    print("\n" + "=" * 80)
-    print("예제 14: KnowledgeGraph 조회 (ObjectType ID + hop)")
-    print("=" * 80)
-
-    object_type_id = "e82c5c6d-dbdf-47fc-b5fd-744f1b9d6d17"
-    hop = 1
-
-    try:
-        graph = client.knowledge_graph.graph_by_object_type_id(object_type_id, hop=hop)
-        nodes = graph.get("nodes", [])
-        edges = graph.get("edges", [])
-        print(f"✓ 조회 성공: object_type_id={object_type_id}, hop={hop}")
-        print(f"  - nodes: {len(nodes)}")
-        print(f"  - edges: {len(edges)}")
-    except Exception as e:
-        print(f"✗ 에러: {e}")
-
-
 def example_knowledge_graph_by_object_type_name():
-    """예제 15: KnowledgeGraph 조회 (ObjectType 이름 + hop)"""
+    """예제 14: KnowledgeGraph 조회 (ObjectType 이름 + hop)"""
     print("\n" + "=" * 80)
     print("예제 15: KnowledgeGraph 조회 (ObjectType 이름 + hop)")
     print("=" * 80)
@@ -553,7 +533,7 @@ def example_knowledge_graph_by_object_type_name():
 
 
 def example_knowledge_graph_by_object_and_link_types():
-    """예제 16: KnowledgeGraph 조회 (ObjectType list + LinkType list)"""
+    """예제 15: KnowledgeGraph 조회 (ObjectType list + LinkType list)"""
     print("\n" + "=" * 80)
     print("예제 16: KnowledgeGraph 조회 (ObjectType list + LinkType list)")
     print("=" * 80)
@@ -605,7 +585,6 @@ if __name__ == "__main__":
     # example_automation_detail()
     # example_automation_set_active_by_name()
     # example_automation_execute_by_name()
-    example_knowledge_graph_by_object_type_id()
     example_knowledge_graph_by_object_type_name()
     example_knowledge_graph_by_object_and_link_types()
 

@@ -35,7 +35,7 @@ class KnowledgeGraphNamespace:
         """
         기존 ObjectType 이름 조회 API(/object-type?name=...)를 사용해 id를 찾습니다.
         """
-        results = self._client.ontology._fetch_object_types(name=object_type_name)
+        results = self._client.ontology.fetch_object_types(name=object_type_name)
         if not results:
             raise ValueError(f"ObjectType '{object_type_name}'을 찾을 수 없습니다.")
 
@@ -51,36 +51,20 @@ class KnowledgeGraphNamespace:
             )
         return object_type_id
 
-    def graph_by_object_type_id(self, object_type_id: str, hop: int) -> Dict[str, Any]:
+    def graph_by_object_type_name(self, object_type_name: str, hop: int) -> Dict[str, Any]:
         """
-        특정 ObjectType(id) 기준 hop 범위 내 연결 graph 조회.
-
-        Args:
-            object_type_id: ObjectType UUID
-            hop: 탐색 hop(0~10)
-
-        Returns:
-            {"nodes": [...], "edges": [...]} 형태의 graph 데이터
+        특정 ObjectType(name) 기준 hop 범위 내 연결 graph 조회.
         """
         self._validate_hop(hop)
-
+        object_type_id = self._resolve_object_type_id_by_name(object_type_name)
         url = f"{self._ontology_url}/{object_type_id}"
         response = self._client._get_session().get(
             url, params={"hop": hop}, timeout=self._client.timeout
         )
         response.raise_for_status()
         result = response.json()
-        self._client._check_response(result, "knowledge graph by object type id")
+        self._client._check_response(result, "knowledge graph by object type name")
         return result.get("data", {})
-
-    def graph_by_object_type_name(self, object_type_name: str, hop: int) -> Dict[str, Any]:
-        """
-        특정 ObjectType(name) 기준 hop 범위 내 연결 graph 조회.
-
-        내부적으로 name -> object_type_id 조회 후 graph_by_object_type_id를 호출합니다.
-        """
-        object_type_id = self._resolve_object_type_id_by_name(object_type_name)
-        return self.graph_by_object_type_id(object_type_id, hop)
 
     def graph_by_object_and_link_types(
         self,
