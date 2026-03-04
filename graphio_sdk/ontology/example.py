@@ -450,7 +450,7 @@ def example_action_type_execute_by_name():
     action_type_name = "action_is_action_isnot_action"
 
     try:
-        result = client.action_type.execute_by_name(action_type_name)
+        result = client.action_type.execute_by_name(name=action_type_name)
         print(f"✓ 실행 성공: {action_type_name}")
         print(f"  - status: {result.get('status')}")
         print(f"  - execution_id: {result.get('execution_id')}")
@@ -504,7 +504,7 @@ def example_automation_execute_by_name():
     automation_name = "automation_manual_test_2602252"
 
     try:
-        result = client.automation.execute_by_name(automation_name)
+        result = client.automation.execute_by_name(name=automation_name)
         print(f"✓ 실행 성공: {automation_name}")
         print(f"  - status: {result.get('status')}")
         print(f"  - execution_id: {result.get('execution_id')}")
@@ -561,7 +561,6 @@ def example_knowledge_graph_by_object_and_link_types():
         print(f"  - edges: {len(edges)}")
     except Exception as e:
         print(f"✗ 에러: {e}")
-
 
 
 if __name__ == "__main__":

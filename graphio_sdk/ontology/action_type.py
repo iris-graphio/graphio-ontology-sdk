@@ -2,7 +2,7 @@
 ActionType 네임스페이스 - GraphioClient와 함께 사용
 """
 
-from typing import Any, Dict, Optional, TYPE_CHECKING
+from typing import List, Any, Dict, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from graphio_sdk.client import GraphioClient
@@ -39,7 +39,9 @@ class ActionTypeNamespace:
         self._client._check_response(result, "action type detail")
         return result.get("data", {})
 
-    def execute_by_name(self, name: str) -> Dict[str, Optional[Any]]:
+    def execute_by_name(
+        self, name: str, messages: List[Dict[str, Any]]
+    ) -> Dict[str, Optional[Any]]:
         """
         ActionType 수동 실행 (이름 기반).
 
@@ -54,7 +56,9 @@ class ActionTypeNamespace:
         if not action_type_id:
             raise ValueError(f"ActionType id를 찾을 수 없습니다. name={name}")
         url = f"{self._url}/{action_type_id}/execute"
-        response = self._client._get_session().post(url, timeout=self._client.timeout)
+        response = self._client._get_session().post(
+            url, json=messages, timeout=self._client.timeout
+        )
         response.raise_for_status()
         result = response.json()
         self._client._check_response(result, "execute action type")
