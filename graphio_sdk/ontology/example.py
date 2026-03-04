@@ -563,6 +563,72 @@ def example_knowledge_graph_by_object_and_link_types():
         print(f"✗ 에러: {e}")
 
 
+def example_link_type_detail_by_name():
+    """예제 16: LinkType 상세 조회 (이름 기반)"""
+    print("\n" + "=" * 80)
+    print("예제 16: LinkType 상세 조회 (이름 기반)")
+    print("=" * 80)
+
+    link_type_name = "계약된사업"
+
+    try:
+        details = client.ontology.fetch_link_type_details(name=link_type_name)
+        print(f"✓ 조회 성공: {link_type_name}")
+        print(f"  - detail 개수: {len(details)}")
+        if details:
+            first = details[0]
+            print(f"  - id: {first.get('id')}")
+            print(f"  - sourceObjectTypeName: {first.get('sourceObjectTypeName')}")
+            print(f"  - targetObjectTypeName: {first.get('targetObjectTypeName')}")
+            print(f"  - direct: {first.get('direct')}")
+    except Exception as e:
+        print(f"✗ 에러: {e}")
+
+
+def example_link_type_detail_by_name_with_filters():
+    """예제 17: LinkType 상세 조회 (필터 포함)"""
+    print("\n" + "=" * 80)
+    print("예제 17: LinkType 상세 조회 (필터 포함)")
+    print("=" * 80)
+
+    link_type_name = "계약된사업"
+
+    try:
+        details = client.ontology.fetch_link_type_details(
+            name=link_type_name,
+            source_object_type_name="용역계약업체",
+            source_property_name="통합계약번호",
+            target_object_type_name="용역계약",
+            target_property_name="통합계약번호",
+            direct="UNIDIRECTIONAL",
+        )
+        print(f"✓ 조회 성공(필터 적용): {link_type_name}")
+        print(f"  - detail 개수: {len(details)}")
+    except Exception as e:
+        print(f"✗ 에러: {e}")
+
+
+def example_get_link_type_by_name():
+    """예제 18: LinkType 클래스 로드 (get_link_type)"""
+    print("\n" + "=" * 80)
+    print("예제 18: LinkType 클래스 로드 (get_link_type)")
+    print("=" * 80)
+
+    link_type_name = "계약된사업"
+
+    try:
+        link_type_cls = client.ontology.get_link_type(link_type_name)
+        if not link_type_cls:
+            print(f"✗ LinkType을 찾을 수 없습니다: {link_type_name}")
+            return
+
+        print(f"✓ LinkType 로드 성공: {link_type_name}")
+        print(f"  - LinkType ID: {link_type_cls._object_type_id}")
+        print(f"  - 캐시된 LinkTypes: {client.ontology.list_link_types()}")
+    except Exception as e:
+        print(f"✗ 에러: {e}")
+
+
 
 if __name__ == "__main__":
     print("\n" + "=" * 80)
@@ -585,8 +651,11 @@ if __name__ == "__main__":
     # example_automation_detail()
     # example_automation_set_active_by_name()
     # example_automation_execute_by_name()
-    example_knowledge_graph_by_object_type_name()
-    example_knowledge_graph_by_object_and_link_types()
+    example_link_type_detail_by_name()
+    example_link_type_detail_by_name_with_filters()
+    example_get_link_type_by_name()
+    # example_knowledge_graph_by_object_type_name()
+    # example_knowledge_graph_by_object_and_link_types()
 
     print("\n" + "=" * 80)
     print("모든 예제 완료!")

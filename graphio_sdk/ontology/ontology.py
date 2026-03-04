@@ -129,6 +129,71 @@ class OntologyNamespace:
         except requests.exceptions.RequestException as e:
             raise Exception(f"ObjectType Properties 조회 실패: {str(e)}") from e
 
+    def _fetch_link_type_details(
+            self,
+            name: str,
+            source_object_type_name: Optional[str] = None,
+            source_property_name: Optional[str] = None,
+            target_object_type_name: Optional[str] = None,
+            target_property_name: Optional[str] = None,
+            direct: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """서버에서 LinkType 상세 목록 가져오기 (이름 기반)"""
+        url = f"{self.client.api_base}/ontology/link-type/detail"
+        params: Dict[str, Any] = {"name": name}
+        if source_object_type_name is not None:
+            params["sourceObjectTypeName"] = source_object_type_name
+        if source_property_name is not None:
+            params["sourcePropertyName"] = source_property_name
+        if target_object_type_name is not None:
+            params["targetObjectTypeName"] = target_object_type_name
+        if target_property_name is not None:
+            params["targetPropertyName"] = target_property_name
+        if direct is not None:
+            params["direct"] = direct
+
+        try:
+            response = self.client._get_session().get(
+                url, params=params, timeout=self.client.timeout
+            )
+            response.raise_for_status()
+
+            result = response.json()
+            self.client._check_response(result, "fetch link type detail")
+            data = result.get("data", [])
+            return data if isinstance(data, list) else []
+
+        except requests.exceptions.Timeout as e:
+            raise Exception(
+                f"LinkType 상세 조회 타임아웃 "
+                f"(timeout={self.client._format_timeout()}): {str(e)}"
+            ) from e
+        except requests.exceptions.RequestException as e:
+            raise Exception(f"LinkType 상세 조회 실패: {str(e)}") from e
+
+    def fetch_link_type_details(
+            self,
+            name: str,
+            source_object_type_name: Optional[str] = None,
+            source_property_name: Optional[str] = None,
+            target_object_type_name: Optional[str] = None,
+            target_property_name: Optional[str] = None,
+            direct: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        LinkType 상세 조회 (public, 이름 기반).
+
+        Java API 시그니처와 동일한 필터 파라미터를 지원합니다.
+        """
+        return self._fetch_link_type_details(
+            name=name,
+            source_object_type_name=source_object_type_name,
+            source_property_name=source_property_name,
+            target_object_type_name=target_object_type_name,
+            target_property_name=target_property_name,
+            direct=direct,
+        )
+
     def _execute_select(
         self, select_dto: Dict[str, Any]
     ) -> List[Dict[str, Any]]:
@@ -512,14 +577,25 @@ class OntologyNamespace:
             cached_name = self._link_type_id_to_name[link_type_id]
             return self._link_types[cached_name]
 
-        # 서버에서 로드 (LinkType API가 구현되면 사용)
-        # 현재는 ObjectType과 동일한 구조로 구현
+        # 서버에서 로드
         if link_type_id:
-            # TODO: LinkType API 구현 시 사용
             raise NotImplementedError("LinkType API가 아직 구현되지 않았습니다.")
         elif name:
-            # TODO: LinkType API 구현 시 사용
-            raise NotImplementedError("LinkType API가 아직 구현되지 않았습니다.")
+            results = self._fetch_link_type_details(name=name)
+            if not results:
+                raise ValueError(f"LinkType '{name}'을 찾을 수 없습니다.")
+
+            exact_match = next(
+                (item for item in results if item.get("name") == name), None
+            )
+            link_data = exact_match if exact_match else results[0]
+            link_type_id = link_data.get("id")
+            link_type_name = link_data.get("name")
+
+            if not link_type_id or not link_type_name:
+                raise ValueError(f"유효하지 않은 LinkType 데이터: {link_data}")
+
+            return self.register_link_type(link_type_name, link_type_id)
         else:
             raise ValueError("link_type_id 또는 name 중 하나는 필수입니다.")
 
