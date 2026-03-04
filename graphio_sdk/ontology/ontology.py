@@ -64,6 +64,23 @@ class OntologyNamespace:
         except requests.exceptions.RequestException as e:
             raise Exception(f"ObjectType 목록 조회 실패: {str(e)}") from e
 
+    def fetch_object_types(
+            self,
+            ontology_id: Optional[str] = None,
+            name: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        ObjectType 목록 조회 (public).
+
+        Args:
+            ontology_id: ontology-id 필터(선택)
+            name: ObjectType 이름 필터(선택)
+
+        Returns:
+            ObjectType 정보 목록
+        """
+        return self._fetch_object_types(ontology_id=ontology_id, name=name)
+
     def _fetch_object_type_by_id(self, object_type_id: str) -> Dict[str, Any]:
         """특정 ObjectType 상세 정보 가져오기"""
         url = f"{self.client.api_base}/object-type/{object_type_id}"
