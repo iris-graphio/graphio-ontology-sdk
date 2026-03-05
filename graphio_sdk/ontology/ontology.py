@@ -5,6 +5,7 @@ Ontology 네임스페이스 및 ObjectType 관리 (Lazy Loading Only)
 from typing import List, Dict, Any, Optional, TYPE_CHECKING
 import threading
 import time
+from datetime import datetime, timezone
 
 import requests
 
@@ -256,6 +257,111 @@ class OntologyNamespace:
         except requests.exceptions.RequestException as e:
             raise Exception(f"객체 삭제 실패: {str(e)}") from e
 
+    def _execute_automation(
+        self,
+        event_type: str,
+        messages: List[Dict[str, Any]],
+        automation_name: Optional[str] = None,
+        object_type_name: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """자동화 ObjectSet 실행 - 단일 automation API 호출"""
+        url = f"{self.client.api_base}/ontology-workflow/objects/automation"
+
+        resolved_automation_id = None
+        if automation_name:
+            detail = self.client.automation.detail(automation_name)
+            resolved_automation_id = detail.get("id")
+            if not resolved_automation_id:
+                raise ValueError(
+                    f"Automation id를 찾을 수 없습니다. name={automation_name}"
+                )
+
+        resolved_object_type_id = None
+        if object_type_name:
+            obj_type_cls = self.get_object_type(object_type_name)
+            if not obj_type_cls:
+                raise ValueError(
+                    f"ObjectType을 찾을 수 없습니다. name={object_type_name}"
+                )
+            resolved_object_type_id = obj_type_cls._object_type_id
+        elif messages:
+            resolved_object_type_id = messages[0].get("objectTypeId")
+
+        timestamp = (
+            datetime.now(timezone.utc)
+            .isoformat(timespec="milliseconds")
+            .replace("+00:00", "Z")
+        )
+
+        request_body = {
+            "automationId": resolved_automation_id,
+            "objectTypeId": resolved_object_type_id,
+            "eventType": event_type,
+            "timestamp": timestamp,
+            "objectInputs": messages
+        }
+        if resolved_object_type_id:
+            for message in request_body["objectInputs"]:
+                if "objectTypeId" not in message or not message.get("objectTypeId"):
+                    message["objectTypeId"] = resolved_object_type_id
+        try:
+            response = self.client._get_session().post(
+                url,
+                json=request_body,
+                headers={"Content-Type": "application/json"},
+                timeout=self.client.timeout
+            )
+            response.raise_for_status()
+            result = response.json()
+            self.client._check_response(result, "객체 자동화 실행")
+            return result.get("data", result)
+        except requests.exceptions.Timeout as e:
+            raise Exception(
+                f"객체 자동화 실행 타임아웃 "
+                f"(timeout={self.client._format_timeout()}): {str(e)}"
+            ) from e
+        except requests.exceptions.RequestException as e:
+            raise Exception(f"객체 자동화 실행 실패: {str(e)}") from e
+
+    def _normalize_automation_objects(
+        self,
+        objs,
+        require_element_id: bool = False,
+        method_name: str = "insert_automation"
+    ) -> List[Dict[str, Any]]:
+        """단건/배치 입력을 objectInputs 형식으로 정규화"""
+        if isinstance(objs, (list, tuple)):
+            obj_list = list(objs)
+        else:
+            obj_list = [objs]
+
+        if not obj_list:
+            raise ValueError(f"{method_name}()의 입력 객체가 비어 있습니다.")
+
+        messages: List[Dict[str, Any]] = []
+        for obj in obj_list:
+            message: Optional[Dict[str, Any]] = None
+
+            if isinstance(obj, dict):
+                message = obj
+            elif hasattr(obj, "to_contract"):
+                message = obj.to_contract()
+            elif hasattr(obj, "to_message"):
+                message = obj.to_message()
+            else:
+                raise ValueError(
+                    f"{method_name}()의 각 항목은 dict 이거나 "
+                    "to_contract()/to_message()를 지원해야 합니다."
+                )
+
+            if require_element_id and not message.get("elementId"):
+                raise ValueError(
+                    f"{method_name}()를 사용하려면 "
+                    "모든 객체에 element_id(elementId)가 필요합니다."
+                )
+            messages.append(message)
+        return messages
+
     # ========================================================================
     # Typed Object/Link API (insert, update, delete)
     # ========================================================================
@@ -330,6 +436,93 @@ class OntologyNamespace:
         contract = obj.to_contract()
         messages = [contract]
         return self._execute_delete(messages)
+
+    def insert_automation(
+        self,
+        objs,
+        automation_name: Optional[str] = None,
+        object_type_name: Optional[str] = None
+    ):
+        """
+        Typed Object 또는 Link를 automation API로 생성 (단건/배치)
+
+        Args:
+            objs: TypedObject 또는 TypedLink 인스턴스 또는 목록
+            automation_name: Automation 이름 (선택)
+            object_type_name: ObjectType 이름 (선택)
+
+        Returns:
+            생성 결과
+        """
+        messages = self._normalize_automation_objects(
+            objs=objs,
+            require_element_id=False,
+            method_name="insert_automation"
+        )
+        return self._execute_automation(
+            event_type="INSERT",
+            messages=messages,
+            automation_name=automation_name,
+            object_type_name=object_type_name
+        )
+
+    def update_automation(
+        self,
+        objs,
+        automation_name: Optional[str] = None,
+        object_type_name: Optional[str] = None
+    ):
+        """
+        Typed Object 또는 Link를 automation API로 업데이트 (단건/배치)
+
+        Args:
+            objs: TypedObject 또는 TypedLink 인스턴스 또는 목록 (element_id 필수)
+            automation_name: Automation 이름 (선택)
+            object_type_name: ObjectType 이름 (선택)
+
+        Returns:
+            업데이트 결과
+        """
+        messages = self._normalize_automation_objects(
+            objs=objs,
+            require_element_id=True,
+            method_name="update_automation"
+        )
+        return self._execute_automation(
+            event_type="UPDATE",
+            messages=messages,
+            automation_name=automation_name,
+            object_type_name=object_type_name
+        )
+
+    def delete_automation(
+        self,
+        objs,
+        automation_name: Optional[str] = None,
+        object_type_name: Optional[str] = None
+    ):
+        """
+        Typed Object 또는 Link를 automation API로 삭제 (단건/배치)
+
+        Args:
+            objs: TypedObject 또는 TypedLink 인스턴스 또는 목록 (element_id 필수)
+            automation_name: Automation 이름 (선택)
+            object_type_name: ObjectType 이름 (선택)
+
+        Returns:
+            삭제 결과
+        """
+        messages = self._normalize_automation_objects(
+            objs=objs,
+            require_element_id=True,
+            method_name="delete_automation"
+        )
+        return self._execute_automation(
+            event_type="DELETE",
+            messages=messages,
+            automation_name=automation_name,
+            object_type_name=object_type_name
+        )
 
     def register_object_type(
             self,

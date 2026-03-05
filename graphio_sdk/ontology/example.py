@@ -512,10 +512,115 @@ def example_automation_execute_by_name():
         print(f"✗ 에러: {e}")
 
 
-def example_knowledge_graph_by_object_type_name():
-    """예제 14: KnowledgeGraph 조회 (ObjectType 이름 + hop)"""
+def example_automation_object_insert_batch():
+    """예제 14: Automation Object INSERT (batch)"""
     print("\n" + "=" * 80)
-    print("예제 15: KnowledgeGraph 조회 (ObjectType 이름 + hop)")
+    print("예제 14: Automation Object INSERT (batch)")
+    print("=" * 80)
+
+    automation_name = "print_hello_world_on_OT_diff"
+    object_type_name = "사원"
+
+    try:
+        obj1 = {
+            "id": "9f3a0c2b-7c4f-4c66-b3b8-0b2e9a6e4f1d",
+            "name": "test1",
+            "email": "test1@mobigen.com",
+            "emp_code": 26261111
+        }
+        obj2 = {
+            "id": "d4b6e8f1-2a7c-4b95-9d1a-6f0c3e7a8b2c",
+            "name": "test2",
+            "email": "test2@mobigen.com",
+            "emp_code": 26262222
+        }
+
+        result = client.ontology.insert_automation(
+            objs=[
+                {"elementId": "", "properties": obj1},
+                {"elementId": "", "properties": obj2},
+            ],
+            automation_name=automation_name,
+            object_type_name=object_type_name
+        )
+        print("✓ INSERT 실행 성공")
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+    except Exception as e:
+        print(f"✗ 에러: {e}")
+
+
+def example_automation_object_update_batch():
+    """예제 15: Automation Object UPDATE (batch)"""
+    print("\n" + "=" * 80)
+    print("예제 15: Automation Object UPDATE (batch)")
+    print("=" * 80)
+
+    automation_name = "print_hello_world_on_OT_diff"
+    object_type_name = "사원"
+
+    try:
+        result = client.ontology.update_automation(
+            objs=[
+                {
+                    "elementId": "(3,74):caaf6922-ec11-4df6-81cd-4e7d38f2b45d",
+                    "properties": {
+                        "name": "test1",
+                        "email": "test123123@mobigen.com",
+                        "emp_code": 262611
+                    }
+                },
+                {
+                    "elementId": "(3,75):caaf6922-ec11-4df6-81cd-4e7d38f2b45d",
+                    "properties": {
+                        "name": "test2",
+                        "email": "test234234@mobigen.com",
+                        "emp_code": 262622
+                    }
+                },
+            ],
+            automation_name=automation_name,
+            object_type_name=object_type_name
+        )
+        print("✓ UPDATE 실행 성공")
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+    except Exception as e:
+        print(f"✗ 에러: {e}")
+
+
+def example_automation_object_delete_batch():
+    """예제 16: Automation Object DELETE (batch)"""
+    print("\n" + "=" * 80)
+    print("예제 16: Automation Object DELETE (batch)")
+    print("=" * 80)
+
+    automation_name = "print_hello_world_on_OT_diff"
+    object_type_name = "사원"
+
+    try:
+        result = client.ontology.delete_automation(
+            objs=[
+                {
+                    "elementId": "(3,66):caaf6922-ec11-4df6-81cd-4e7d38f2b45d",
+                    "properties": {
+                        "name": "test1",
+                        "email": "test123123@mobigen.com",
+                        "emp_code": 262611
+                    }
+                }
+            ],
+            automation_name=automation_name,
+            object_type_name=object_type_name
+        )
+        print("✓ DELETE 실행 성공")
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+    except Exception as e:
+        print(f"✗ 에러: {e}")
+
+
+def example_knowledge_graph_by_object_type_name():
+    """예제 17: KnowledgeGraph 조회 (ObjectType 이름 + hop)"""
+    print("\n" + "=" * 80)
+    print("예제 17: KnowledgeGraph 조회 (ObjectType 이름 + hop)")
     print("=" * 80)
 
     object_type_name = "용역계약업체"
@@ -533,9 +638,9 @@ def example_knowledge_graph_by_object_type_name():
 
 
 def example_knowledge_graph_by_object_and_link_types():
-    """예제 15: KnowledgeGraph 조회 (ObjectType list + LinkType list)"""
+    """예제 18: KnowledgeGraph 조회 (ObjectType list + LinkType list)"""
     print("\n" + "=" * 80)
-    print("예제 16: KnowledgeGraph 조회 (ObjectType list + LinkType list)")
+    print("예제 18: KnowledgeGraph 조회 (ObjectType list + LinkType list)")
     print("=" * 80)
 
     object_type_id_list = [
@@ -584,8 +689,11 @@ if __name__ == "__main__":
     # example_automation_detail()
     # example_automation_set_active_by_name()
     # example_automation_execute_by_name()
-    example_knowledge_graph_by_object_type_name()
-    example_knowledge_graph_by_object_and_link_types()
+    # example_automation_object_insert_batch()
+    example_automation_object_update_batch()
+    # example_automation_object_delete_batch()
+    # example_knowledge_graph_by_object_type_name()
+    # example_knowledge_graph_by_object_and_link_types()
 
     print("\n" + "=" * 80)
     print("모든 예제 완료!")
