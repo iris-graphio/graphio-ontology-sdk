@@ -562,24 +562,25 @@ def example_automation_object_update_batch():
         result = client.ontology.update_automation(
             objs=[
                 {
-                    "elementId": "(3,74):caaf6922-ec11-4df6-81cd-4e7d38f2b45d",
                     "properties": {
-                        "name": "test1",
-                        "email": "test123123@mobigen.com",
-                        "emp_code": 262611
+                        "id": "d4b6e8f1-2a7c-4b95-9d1a-6f0c3e7a8b2c",
+                        "사원명": "test1_upd",
+                        "이메일": "test123123_upd2@mobigen.com",
+                        "사원ID": 262611
                     }
                 },
                 {
-                    "elementId": "(3,75):caaf6922-ec11-4df6-81cd-4e7d38f2b45d",
                     "properties": {
-                        "name": "test2",
-                        "email": "test234234@mobigen.com",
-                        "emp_code": 262622
+                        "id": "9f3a0c2b-7c4f-4c66-b3b8-0b2e9a6e4f1d",
+                        "사원명": "test2_upd",
+                        "이메일": "test234234_upd2@mobigen.com",
+                        "사원ID": 262622
                     }
                 },
             ],
             automation_name=automation_name,
-            object_type_name=object_type_name
+            object_type_name=object_type_name,
+            element_id_lookup_field="사원명"
         )
         print("✓ UPDATE 실행 성공")
         print(json.dumps(result, indent=2, ensure_ascii=False))
@@ -600,8 +601,8 @@ def example_automation_object_delete_batch():
         result = client.ontology.delete_automation(
             objs=[
                 {
-                    "elementId": "(3,66):caaf6922-ec11-4df6-81cd-4e7d38f2b45d",
                     "properties": {
+                        "id": "9f3a0c2b-7c4f-4c66-b3b8-0b2e9a6e4f1d",
                         "name": "test1",
                         "email": "test123123@mobigen.com",
                         "emp_code": 262611
@@ -609,7 +610,8 @@ def example_automation_object_delete_batch():
                 }
             ],
             automation_name=automation_name,
-            object_type_name=object_type_name
+            object_type_name=object_type_name,
+            element_id_lookup_field="id"
         )
         print("✓ DELETE 실행 성공")
         print(json.dumps(result, indent=2, ensure_ascii=False))
@@ -674,7 +676,7 @@ if __name__ == "__main__":
     print("=" * 80)
 
     # 기본 예제 실행
-    example_basic_data_query()
+    # example_basic_data_query()
 
     # 다른 예제들 (주석 해제하여 실행)
     # example_select_all_fields()

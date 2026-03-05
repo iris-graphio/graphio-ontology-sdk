@@ -262,7 +262,8 @@ class OntologyNamespace:
         event_type: str,
         messages: List[Dict[str, Any]],
         automation_name: Optional[str] = None,
-        object_type_name: Optional[str] = None
+        object_type_name: Optional[str] = None,
+        element_id_lookup_field: Optional[str] = None
     ) -> Dict[str, Any]:
         """자동화 ObjectSet 실행 - 단일 automation API 호출"""
         url = f"{self.client.api_base}/ontology-workflow/objects/automation"
@@ -286,6 +287,14 @@ class OntologyNamespace:
             resolved_object_type_id = obj_type_cls._object_type_id
         elif messages:
             resolved_object_type_id = messages[0].get("objectTypeId")
+
+        if event_type in {"UPDATE", "DELETE"}:
+            self._fill_missing_element_ids(
+                messages=messages,
+                resolved_object_type_id=resolved_object_type_id,
+                method_name=f"{event_type.lower()}_automation",
+                element_id_lookup_field=element_id_lookup_field
+            )
 
         timestamp = (
             datetime.now(timezone.utc)
@@ -322,6 +331,77 @@ class OntologyNamespace:
             ) from e
         except requests.exceptions.RequestException as e:
             raise Exception(f"객체 자동화 실행 실패: {str(e)}") from e
+
+    def _fill_missing_element_ids(
+        self,
+        messages: List[Dict[str, Any]],
+        resolved_object_type_id: Optional[str],
+        method_name: str,
+        element_id_lookup_field: Optional[str]
+    ) -> None:
+        """elementId가 누락된 메시지에 대해 select API로 elementId를 채운다."""
+        missing_element_id_messages = [
+            message for message in messages if not message.get("elementId")
+        ]
+
+        if not missing_element_id_messages:
+            return
+
+        if not element_id_lookup_field:
+            raise ValueError(
+                f"{method_name}()에서 elementId가 없는 객체를 처리하려면 "
+                "element_id_lookup_field 인자가 필요합니다. "
+                "예: element_id_lookup_field='id'"
+            )
+
+        for message in missing_element_id_messages:
+            object_type_id = message.get("objectTypeId") or resolved_object_type_id
+            if not object_type_id:
+                raise ValueError(
+                    f"{method_name}()에서 objectTypeId를 찾을 수 없습니다. "
+                    "object_type_name 또는 message.objectTypeId를 전달하세요."
+                )
+
+            properties = message.get("properties") or {}
+            lookup_value = properties.get(element_id_lookup_field)
+            if lookup_value is None:
+                raise ValueError(
+                    f"{method_name}()에서 elementId 조회를 위해 "
+                    f"properties['{element_id_lookup_field}'] 값이 필요합니다."
+                )
+
+            select_dto = {
+                "select": [element_id_lookup_field],
+                "from": object_type_id,
+                "where": {
+                    "field": element_id_lookup_field,
+                    "op": "eq",
+                    "value": lookup_value
+                },
+                "limit": 2
+            }
+            selected_rows = self._execute_select(select_dto)
+            if not selected_rows:
+                raise ValueError(
+                    f"{method_name}()에서 elementId를 찾을 수 없습니다. "
+                    f"{element_id_lookup_field}={lookup_value}"
+                )
+            if len(selected_rows) > 1:
+                raise ValueError(
+                    f"{method_name}()에서 elementId가 여러 건 조회되었습니다. "
+                    f"{element_id_lookup_field}={lookup_value}"
+                )
+
+            resolved_element_id = selected_rows[0].get("elementId")
+            if not resolved_element_id:
+                raise ValueError(
+                    f"{method_name}()에서 조회 결과에 elementId가 없습니다. "
+                    f"{element_id_lookup_field}={lookup_value}"
+                )
+
+            message["elementId"] = resolved_element_id
+            if not message.get("objectTypeId"):
+                message["objectTypeId"] = object_type_id
 
     def _normalize_automation_objects(
         self,
@@ -470,58 +550,64 @@ class OntologyNamespace:
         self,
         objs,
         automation_name: Optional[str] = None,
-        object_type_name: Optional[str] = None
+        object_type_name: Optional[str] = None,
+        element_id_lookup_field: Optional[str] = None
     ):
         """
         Typed Object 또는 Link를 automation API로 업데이트 (단건/배치)
 
         Args:
-            objs: TypedObject 또는 TypedLink 인스턴스 또는 목록 (element_id 필수)
+            objs: TypedObject 또는 TypedLink 인스턴스 또는 목록
             automation_name: Automation 이름 (선택)
             object_type_name: ObjectType 이름 (선택)
+            element_id_lookup_field: elementId 자동 조회용 속성명 (예: "id")
 
         Returns:
             업데이트 결과
         """
         messages = self._normalize_automation_objects(
             objs=objs,
-            require_element_id=True,
+            require_element_id=False,
             method_name="update_automation"
         )
         return self._execute_automation(
             event_type="UPDATE",
             messages=messages,
             automation_name=automation_name,
-            object_type_name=object_type_name
+            object_type_name=object_type_name,
+            element_id_lookup_field=element_id_lookup_field
         )
 
     def delete_automation(
         self,
         objs,
         automation_name: Optional[str] = None,
-        object_type_name: Optional[str] = None
+        object_type_name: Optional[str] = None,
+        element_id_lookup_field: Optional[str] = None
     ):
         """
         Typed Object 또는 Link를 automation API로 삭제 (단건/배치)
 
         Args:
-            objs: TypedObject 또는 TypedLink 인스턴스 또는 목록 (element_id 필수)
+            objs: TypedObject 또는 TypedLink 인스턴스 또는 목록
             automation_name: Automation 이름 (선택)
             object_type_name: ObjectType 이름 (선택)
+            element_id_lookup_field: elementId 자동 조회용 속성명 (예: "id")
 
         Returns:
             삭제 결과
         """
         messages = self._normalize_automation_objects(
             objs=objs,
-            require_element_id=True,
+            require_element_id=False,
             method_name="delete_automation"
         )
         return self._execute_automation(
             event_type="DELETE",
             messages=messages,
             automation_name=automation_name,
-            object_type_name=object_type_name
+            object_type_name=object_type_name,
+            element_id_lookup_field=element_id_lookup_field
         )
 
     def register_object_type(
