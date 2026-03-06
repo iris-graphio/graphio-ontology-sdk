@@ -512,10 +512,111 @@ def example_automation_execute_by_name():
         print(f"✗ 에러: {e}")
 
 
-def example_knowledge_graph_by_object_type_name():
-    """예제 14: KnowledgeGraph 조회 (ObjectType 이름 + hop)"""
+def example_object_insert_batch():
+    """예제 14: Object INSERT (batch, insert 사용)"""
     print("\n" + "=" * 80)
-    print("예제 15: KnowledgeGraph 조회 (ObjectType 이름 + hop)")
+    print("예제 14: Object INSERT (batch)")
+    print("=" * 80)
+
+    object_type_name = "사원"
+
+    try:
+        obj1 = {
+            "id": "9f3a0c2b-7c4f-4c66-b3b8-0b2e9a6e4f1d",
+            "사원명": "test1",
+            "이메일": "test1@mobigen.com",
+            "사원ID": 26030601
+        }
+        obj2 = {
+            "id": "d4b6e8f1-2a7c-4b95-9d1a-6f0c3e7a8b2c",
+            "사원명": "test2",
+            "이메일": "test2@mobigen.com",
+            "사원ID": 26030602
+        }
+
+        result = client.ontology.insert_batch(
+            object_type_name=object_type_name,
+            objs=[
+                {"elementId": "", "properties": obj1},
+                {"elementId": "", "properties": obj2},
+            ],
+        )
+        print("✓ INSERT 실행 성공")
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+    except Exception as e:
+        print(f"✗ 에러: {e}")
+
+
+def example_object_update_batch():
+    """예제 15: Object UPDATE (batch, update 사용)"""
+    print("\n" + "=" * 80)
+    print("예제 15: Object UPDATE (batch)")
+    print("=" * 80)
+
+    object_type_name = "사원"
+
+    try:
+        result = client.ontology.update_batch(
+            object_type_name=object_type_name,
+            objs=[
+                {
+                    "properties": {
+                        "id": "d4b6e8f1-2a7c-4b95-9d1a-6f0c3e7a8b2c",
+                        "사원명": "test1",
+                        "이메일": "test123123_upd3@mobigen.com",
+                        "사원ID": 262611
+                    }
+                },
+                {
+                    "properties": {
+                        "id": "9f3a0c2b-7c4f-4c66-b3b8-0b2e9a6e4f1d",
+                        "사원명": "test2",
+                        "이메일": "test234234_upd3@mobigen.com",
+                        "사원ID": 262622
+                    }
+                },
+            ],
+            element_id_lookup_field="사원명"
+        )
+        print("✓ UPDATE 실행 성공")
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+    except Exception as e:
+        print(f"✗ 에러: {e}")
+
+
+def example_object_delete_batch():
+    """예제 16: Object DELETE (batch, delete 사용)"""
+    print("\n" + "=" * 80)
+    print("예제 16: Object DELETE (batch)")
+    print("=" * 80)
+
+    object_type_name = "사원"
+
+    try:
+        result = client.ontology.delete_batch(
+            object_type_name=object_type_name,
+            objs=[
+                {
+                    "properties": {
+                        "id": "9f3a0c2b-7c4f-4c66-b3b8-0b2e9a6e4f1d",
+                        "name": "test1",
+                        "email": "test123123@mobigen.com",
+                        "emp_code": 262611
+                    }
+                }
+            ],
+            element_id_lookup_field="id"
+        )
+        print("✓ DELETE 실행 성공")
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+    except Exception as e:
+        print(f"✗ 에러: {e}")
+
+
+def example_knowledge_graph_by_object_type_name():
+    """예제 17: KnowledgeGraph 조회 (ObjectType 이름 + hop)"""
+    print("\n" + "=" * 80)
+    print("예제 17: KnowledgeGraph 조회 (ObjectType 이름 + hop)")
     print("=" * 80)
 
     object_type_name = "용역계약업체"
@@ -533,9 +634,9 @@ def example_knowledge_graph_by_object_type_name():
 
 
 def example_knowledge_graph_by_object_and_link_types():
-    """예제 15: KnowledgeGraph 조회 (ObjectType list + LinkType list)"""
+    """예제 18: KnowledgeGraph 조회 (ObjectType list + LinkType list)"""
     print("\n" + "=" * 80)
-    print("예제 16: KnowledgeGraph 조회 (ObjectType list + LinkType list)")
+    print("예제 18: KnowledgeGraph 조회 (ObjectType list + LinkType list)")
     print("=" * 80)
 
     object_type_id_list = [
@@ -569,7 +670,7 @@ if __name__ == "__main__":
     print("=" * 80)
 
     # 기본 예제 실행
-    example_basic_data_query()
+    # example_basic_data_query()
 
     # 다른 예제들 (주석 해제하여 실행)
     # example_select_all_fields()
@@ -584,8 +685,12 @@ if __name__ == "__main__":
     # example_automation_detail()
     # example_automation_set_active_by_name()
     # example_automation_execute_by_name()
-    example_knowledge_graph_by_object_type_name()
-    example_knowledge_graph_by_object_and_link_types()
+    example_object_insert_batch()
+    # example_object_update_batch()
+    # example_object_delete_batch()
+
+    # example_knowledge_graph_by_object_type_name()
+    # example_knowledge_graph_by_object_and_link_types()
 
     print("\n" + "=" * 80)
     print("모든 예제 완료!")

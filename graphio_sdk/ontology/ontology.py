@@ -4,7 +4,6 @@ Ontology 네임스페이스 및 ObjectType 관리 (Lazy Loading Only)
 
 from typing import List, Dict, Any, Optional, TYPE_CHECKING
 import threading
-import time
 
 import requests
 
@@ -174,15 +173,10 @@ class OntologyNamespace:
     ) -> Dict[str, Any]:
         """생성 실행 - HTTP API로 요청"""
         url = f"{self.client.api_base}/ontology-workflow/objects/insert"
-        request_body = {
-            "eventType": "INSERT",
-            "timestamp": int(time.time() * 1000),
-            "objectInputs": messages
-        }
         try:
             response = self.client._get_session().post(
                 url,
-                json=request_body,
+                json=messages,
                 headers={"Content-Type": "application/json"},
                 timeout=self.client.timeout
             )
@@ -203,15 +197,10 @@ class OntologyNamespace:
     ) -> Dict[str, Any]:
         """업데이트 실행 - HTTP API로 요청"""
         url = f"{self.client.api_base}/ontology-workflow/objects/update"
-        request_body = {
-            "eventType": "UPDATE",
-            "timestamp": int(time.time() * 1000),
-            "objectInputs": messages
-        }
         try:
             response = self.client._get_session().post(
                 url,
-                json=request_body,
+                json=messages,
                 headers={"Content-Type": "application/json"},
                 timeout=self.client.timeout
             )
@@ -232,15 +221,10 @@ class OntologyNamespace:
     ) -> Dict[str, Any]:
         """삭제 실행 - HTTP API로 요청"""
         url = f"{self.client.api_base}/ontology-workflow/objects/delete"
-        request_body = {
-            "eventType": "DELETE",
-            "timestamp": int(time.time() * 1000),
-            "objectInputs": messages
-        }
         try:
             response = self.client._get_session().post(
                 url,
-                json=request_body,
+                json=messages,
                 headers={"Content-Type": "application/json"},
                 timeout=self.client.timeout
             )
@@ -255,6 +239,191 @@ class OntologyNamespace:
             ) from e
         except requests.exceptions.RequestException as e:
             raise Exception(f"객체 삭제 실패: {str(e)}") from e
+
+    def _normalize_object_messages(
+        self,
+        objs,
+        require_element_id: bool,
+        method_name: str
+    ) -> List[Dict[str, Any]]:
+        """단건/배치 입력을 object message 형식으로 정규화."""
+        if isinstance(objs, (list, tuple)):
+            obj_list = list(objs)
+        else:
+            obj_list = [objs]
+
+        if not obj_list:
+            raise ValueError(f"{method_name}()의 입력 객체가 비어 있습니다.")
+
+        messages: List[Dict[str, Any]] = []
+        for obj in obj_list:
+            if isinstance(obj, dict):
+                message = obj
+            elif hasattr(obj, "to_contract"):
+                message = obj.to_contract()
+            elif hasattr(obj, "to_message"):
+                message = obj.to_message()
+            else:
+                raise ValueError(
+                    f"{method_name}()의 각 항목은 dict 이거나 "
+                    "to_contract()/to_message()를 지원해야 합니다."
+                )
+
+            if require_element_id and not message.get("elementId"):
+                raise ValueError(
+                    f"{method_name}()를 사용하려면 "
+                    "모든 객체에 element_id(elementId)가 필요합니다."
+                )
+            messages.append(message)
+        return messages
+
+    def _resolve_object_type_id(self, object_type_name: Optional[str]) -> Optional[str]:
+        """ObjectType 이름으로 objectTypeId 조회."""
+        if not object_type_name:
+            return None
+        obj_type_cls = self.get_object_type(object_type_name)
+        if not obj_type_cls:
+            raise ValueError(f"ObjectType을 찾을 수 없습니다. name={object_type_name}")
+        return obj_type_cls._object_type_id
+
+    def _fill_missing_element_ids(
+        self,
+        messages: List[Dict[str, Any]],
+        resolved_object_type_id: Optional[str],
+        method_name: str,
+        element_id_lookup_field: Optional[str]
+    ) -> None:
+        """elementId가 누락된 메시지에 대해 select API로 elementId를 채운다."""
+        missing_element_id_messages = [
+            message for message in messages if not message.get("elementId")
+        ]
+
+        if not missing_element_id_messages:
+            return
+
+        if not element_id_lookup_field:
+            raise ValueError(
+                f"{method_name}()에서 elementId가 없는 객체를 처리하려면 "
+                "element_id_lookup_field 인자가 필요합니다. "
+                "예: element_id_lookup_field='id'"
+            )
+
+        for message in missing_element_id_messages:
+            object_type_id = message.get("objectTypeId") or resolved_object_type_id
+            if not object_type_id:
+                raise ValueError(
+                    f"{method_name}()에서 objectTypeId를 찾을 수 없습니다. "
+                    "object_type_name 또는 message.objectTypeId를 전달하세요."
+                )
+
+            properties = message.get("properties") or {}
+            lookup_value = properties.get(element_id_lookup_field)
+            if lookup_value is None:
+                raise ValueError(
+                    f"{method_name}()에서 elementId 조회를 위해 "
+                    f"properties['{element_id_lookup_field}'] 값이 필요합니다."
+                )
+
+            select_dto = {
+                "select": [element_id_lookup_field],
+                "from": object_type_id,
+                "where": {
+                    "field": element_id_lookup_field,
+                    "op": "eq",
+                    "value": lookup_value
+                },
+                "limit": 2
+            }
+            selected_rows = self._execute_select(select_dto)
+            if not selected_rows:
+                raise ValueError(
+                    f"{method_name}()에서 elementId를 찾을 수 없습니다. "
+                    f"{element_id_lookup_field}={lookup_value}"
+                )
+            if len(selected_rows) > 1:
+                raise ValueError(
+                    f"{method_name}()에서 elementId가 여러 건 조회되었습니다. "
+                    f"{element_id_lookup_field}={lookup_value}"
+                )
+
+            resolved_element_id = selected_rows[0].get("elementId")
+            if not resolved_element_id:
+                raise ValueError(
+                    f"{method_name}()에서 조회 결과에 elementId가 없습니다. "
+                    f"{element_id_lookup_field}={lookup_value}"
+                )
+
+            message["elementId"] = resolved_element_id
+            if not message.get("objectTypeId"):
+                message["objectTypeId"] = object_type_id
+
+    def insert_batch(
+        self,
+        objs,
+        object_type_name: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """여러 객체를 insert API로 한 번에 생성."""
+        resolved_object_type_id = self._resolve_object_type_id(object_type_name)
+        messages = self._normalize_object_messages(
+            objs=objs,
+            require_element_id=False,
+            method_name="insert_batch"
+        )
+        if resolved_object_type_id:
+            for message in messages:
+                if "objectTypeId" not in message or not message.get("objectTypeId"):
+                    message["objectTypeId"] = resolved_object_type_id
+        return self._execute_create(messages)
+
+    def update_batch(
+        self,
+        objs,
+        object_type_name: Optional[str] = None,
+        element_id_lookup_field: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """여러 객체를 update API로 한 번에 수정."""
+        resolved_object_type_id = self._resolve_object_type_id(object_type_name)
+        messages = self._normalize_object_messages(
+            objs=objs,
+            require_element_id=False,
+            method_name="update_batch"
+        )
+        self._fill_missing_element_ids(
+            messages=messages,
+            resolved_object_type_id=resolved_object_type_id,
+            method_name="update_batch",
+            element_id_lookup_field=element_id_lookup_field
+        )
+        if resolved_object_type_id:
+            for message in messages:
+                if "objectTypeId" not in message or not message.get("objectTypeId"):
+                    message["objectTypeId"] = resolved_object_type_id
+        return self._execute_update(messages)
+
+    def delete_batch(
+        self,
+        objs,
+        object_type_name: Optional[str] = None,
+        element_id_lookup_field: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """여러 객체를 delete API로 한 번에 삭제."""
+        resolved_object_type_id = self._resolve_object_type_id(object_type_name)
+        messages = self._normalize_object_messages(
+            objs=objs,
+            require_element_id=False,
+            method_name="delete_batch"
+        )
+        self._fill_missing_element_ids(
+            messages=messages,
+            resolved_object_type_id=resolved_object_type_id,
+            method_name="delete_batch",
+            element_id_lookup_field=element_id_lookup_field
+        )
+        if resolved_object_type_id:
+            for message in messages:
+                if "objectTypeId" not in message or not message.get("objectTypeId"):
+                    message["objectTypeId"] = resolved_object_type_id
+        return self._execute_delete(messages)
 
     # ========================================================================
     # Typed Object/Link API (insert, update, delete)
