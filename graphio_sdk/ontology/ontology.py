@@ -4,8 +4,6 @@ Ontology 네임스페이스 및 ObjectType 관리 (Lazy Loading Only)
 
 from typing import List, Dict, Any, Optional, TYPE_CHECKING
 import threading
-import time
-from datetime import datetime, timezone
 
 import requests
 
