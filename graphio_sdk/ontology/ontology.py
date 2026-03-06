@@ -173,11 +173,10 @@ class OntologyNamespace:
     ) -> Dict[str, Any]:
         """생성 실행 - HTTP API로 요청"""
         url = f"{self.client.api_base}/ontology-workflow/objects/insert"
-        request_body = messages
         try:
             response = self.client._get_session().post(
                 url,
-                json=request_body,
+                json=messages,
                 headers={"Content-Type": "application/json"},
                 timeout=self.client.timeout
             )
@@ -198,11 +197,10 @@ class OntologyNamespace:
     ) -> Dict[str, Any]:
         """업데이트 실행 - HTTP API로 요청"""
         url = f"{self.client.api_base}/ontology-workflow/objects/update"
-        request_body = messages
         try:
             response = self.client._get_session().post(
                 url,
-                json=request_body,
+                json=messages,
                 headers={"Content-Type": "application/json"},
                 timeout=self.client.timeout
             )
@@ -223,11 +221,10 @@ class OntologyNamespace:
     ) -> Dict[str, Any]:
         """삭제 실행 - HTTP API로 요청"""
         url = f"{self.client.api_base}/ontology-workflow/objects/delete"
-        request_body = messages
         try:
             response = self.client._get_session().post(
                 url,
-                json=request_body,
+                json=messages,
                 headers={"Content-Type": "application/json"},
                 timeout=self.client.timeout
             )
@@ -246,8 +243,8 @@ class OntologyNamespace:
     def _normalize_object_messages(
         self,
         objs,
-        require_element_id: bool = False,
-        method_name: str = "insert_batch"
+        require_element_id: bool,
+        method_name: str
     ) -> List[Dict[str, Any]]:
         """단건/배치 입력을 object message 형식으로 정규화."""
         if isinstance(objs, (list, tuple)):
@@ -260,7 +257,6 @@ class OntologyNamespace:
 
         messages: List[Dict[str, Any]] = []
         for obj in obj_list:
-            message: Optional[Dict[str, Any]] = None
             if isinstance(obj, dict):
                 message = obj
             elif hasattr(obj, "to_contract"):
