@@ -6,7 +6,7 @@
 
 ## 핵심 개념
 
-1. **SDK는 ObjectType, LinkType을 Python class로 제공**
+1. **SDK는 ObjectType, LinkType, MetaType의 API를 Python class로 제공**
    - 런타임 동적 생성 방식
    - 필요할 때 서버에서 schema를 조회하여 동적으로 클래스 생성
 
@@ -65,14 +65,14 @@ from graphio_sdk import GraphioClient
 client = GraphioClient(base_url="http://localhost:8080")
 
 # 생성
-client.insert(emp)
+client.ontology.insert(emp)
 
 # 수정
 emp.age = 31
-client.update(emp)
+client.ontology.update(emp)
 
 # 삭제
-client.delete(emp)
+client.ontology.delete(emp)
 ```
 
 ## SDK → Service 전달 규칙

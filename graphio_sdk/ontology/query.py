@@ -16,9 +16,10 @@ class ObjectSetQuery:
     실제 데이터베이스에서 데이터를 조회합니다.
     """
 
-    def __init__(self, object_type_class: type, client):
+    def __init__(self, object_type_class: type, client, ontology_namespace=None):
         self.object_type_class = object_type_class
         self.client = client
+        self._ontology_namespace = ontology_namespace  # ontology 전용 select 시 사용
         self._select_fields: List[str] = []
         self._select_all = False  # '*' 선택 여부
         self._conditions: List[Union['Condition', 'LogicalCondition']] = []
@@ -135,8 +136,13 @@ class ObjectSetQuery:
         if self._limit_value:
             select_dto["limit"] = self._limit_value
 
-        # 실제 데이터 조회
-        return self.client._execute_select(select_dto)
+        # 실제 데이터 조회 (ontology namespace 전용)
+        if self._ontology_namespace is None:
+            raise RuntimeError(
+                "select 실행을 위해 client.ontology.get_object_type() 또는 "
+                "load_object_type()으로 로드한 ObjectType을 사용하세요."
+            )
+        return self._ontology_namespace._execute_select(select_dto)
 
     def count(self) -> int:
         """
@@ -162,7 +168,12 @@ class ObjectSetQuery:
         if where_clause:
             select_dto["where"] = where_clause
 
-        result = self.client._execute_select(select_dto)
+        if self._ontology_namespace is None:
+            raise RuntimeError(
+                "count 실행을 위해 client.ontology.get_object_type() 또는 "
+                "load_object_type()으로 로드한 ObjectType을 사용하세요."
+            )
+        result = self._ontology_namespace._execute_select(select_dto)
         return len(result)
 
     def first(self) -> Optional[Dict[str, Any]]:

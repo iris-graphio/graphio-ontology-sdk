@@ -24,7 +24,8 @@ Python 클라이언트 for Graphio Ontology Service
 
 ## 소개
 
-Graphio Ontology SDK는 GraphIO Ontology Service와 상호작용하기 위한 Python 클라이언트입니다. 직관적인 API를 제공하여 데이터 조회, 생성, 수정을 쉽게 수행할 수 있습니다.
+Graphio Ontology SDK는 GraphIO Ontology Service와 상호작용하기 위한 Python 클라이언트입니다.
+직관적인 API를 제공하여 데이터 조회, 생성, 수정을 쉽게 수행할 수 있습니다.
 
 ### 주요 기능
 
@@ -46,6 +47,9 @@ client = GraphioClient()
 # ObjectType 로드 및 쿼리
 Employee = client.ontology.get_object_type("Employee")
 employees = Employee.where(Employee.age > 30).select("name", "age").execute()
+
+# MetaType list 출력 API 실행
+meta_type_list = client.meta_type.manage.list()
 ```
 
 ### 🔄 자동 리소스 관리
@@ -69,7 +73,13 @@ pip install graphio-sdk
 ### 소스에서 설치
 
 ```bash
-git clone https://github.com/your-org/graphio-sdk.git
+# 최신 버전
+git clone https://github.com/iris-graphio/graphio-ontology-sdk.git
+# v0.1.0
+git clone https://github.com/iris-graphio/graphio-ontology-sdk.git@v0.1.0
+# v1.0.0
+git clone https://github.com/iris-graphio/graphio-ontology-sdk.git@v1.0.0
+
 cd graphio-sdk
 pip install -e .
 ```
