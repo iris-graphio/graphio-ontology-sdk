@@ -105,6 +105,29 @@ class ObjectTypeEditor:
         self.edits_builder._add_update(obj)
         return obj
 
+    def delete(self, existing_object: Union[Dict[str, Any], EditableObject]) -> EditableObject:
+        """기존 객체 삭제"""
+        if isinstance(existing_object, dict):
+            element_id = existing_object.get("elementId")
+            properties = existing_object.get("properties", {})
+        elif isinstance(existing_object, EditableObject):
+            element_id = existing_object.element_id
+            properties = existing_object.get_properties()
+        else:
+            raise ValueError("existing_object는 dict 또는 EditableObject여야 합니다.")
+
+        if not element_id:
+            raise ValueError("삭제하려면 elementId가 필요합니다.")
+
+        obj = EditableObject(
+            object_type_id=self.object_type_class._object_type_id,
+            properties=properties,
+            element_id=element_id
+        )
+
+        self.edits_builder._add_delete(obj)
+        return obj
+
 
 class ObjectsAccessor:
     """objects.XXX 형태로 접근하기 위한 헬퍼"""
@@ -175,6 +198,7 @@ class OntologyEditsBuilder:
         self.client = client
         self._creates: List[EditableObject] = []
         self._updates: List[EditableObject] = []
+        self._deletes: List[EditableObject] = []
         self.objects = ObjectsAccessor(self, object_types)
 
     def _add_create(self, obj: EditableObject):
@@ -185,11 +209,16 @@ class OntologyEditsBuilder:
         """업데이트 목록에 추가"""
         self._updates.append(obj)
 
+    def _add_delete(self, obj: EditableObject):
+        """삭제 목록에 추가"""
+        self._deletes.append(obj)
+
     def get_edits(self) -> List[Dict[str, Any]]:
         """모든 편집 내용을 리스트로 반환 (커밋하지 않음)"""
         all_edits = []
         all_edits.extend([obj.to_message() for obj in self._creates])
         all_edits.extend([obj.to_message() for obj in self._updates])
+        all_edits.extend([obj.to_message() for obj in self._deletes])
         return all_edits
 
     def commit(self) -> Dict[str, Any]:
@@ -204,8 +233,13 @@ class OntologyEditsBuilder:
             update_messages = [obj.to_message() for obj in self._updates]
             results['updates'] = self.client.ontology._execute_update(update_messages)
 
+        if self._deletes:
+            delete_messages = [obj.to_message() for obj in self._deletes]
+            results['deletes'] = self.client.ontology._execute_delete(delete_messages)
+
         # 커밋 후 초기화
         self._creates.clear()
         self._updates.clear()
+        self._deletes.clear()
 
         return results

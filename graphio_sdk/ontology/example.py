@@ -613,6 +613,50 @@ def example_object_delete_batch():
         print(f"✗ 에러: {e}")
 
 
+def example_object_delete_edits():
+    """예제 19: Object DELETE (edits 사용)"""
+    print("\n" + "=" * 80)
+    print("예제 19: Object DELETE (edits)")
+    print("=" * 80)
+
+    object_type_name = "사원"
+    target_id = "9f3a0c2b-7c4f-4c66-b3b8-0b2e9a6e4f1d"
+
+    try:
+        Employee = client.ontology.get_object_type(object_type_name)
+
+        if not Employee:
+            print(f"✗ '{object_type_name}' ObjectType을 찾을 수 없습니다.")
+            return
+
+        employees = (Employee
+                     .where(Employee.id == target_id)
+                     .select("id", "사원명")
+                     .execute())
+
+        if not employees:
+            print(f"✗ 삭제 대상을 찾을 수 없습니다. id={target_id}")
+            return
+
+        print(f"✓ 삭제 대상 {len(employees)}건 조회")
+
+        edits = client.ontology.edits()
+
+        for employee in employees:
+            props = employee.get("properties", {})
+            edits.objects(Employee).delete({
+                "elementId": employee["elementId"],
+                "properties": {"id": props["id"]},
+            })
+            print(f"  - 삭제 예약: {props.get('사원명')} (id={props.get('id')})")
+
+        result = edits.commit()
+        print("✓ DELETE 실행 성공")
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+    except Exception as e:
+        print(f"✗ 에러: {e}")
+
+
 def example_knowledge_graph_by_object_type_name():
     """예제 17: KnowledgeGraph 조회 (ObjectType 이름 + hop)"""
     print("\n" + "=" * 80)
@@ -688,6 +732,7 @@ if __name__ == "__main__":
     example_object_insert_batch()
     # example_object_update_batch()
     # example_object_delete_batch()
+    # example_object_delete_edits()
 
     # example_knowledge_graph_by_object_type_name()
     # example_knowledge_graph_by_object_and_link_types()
