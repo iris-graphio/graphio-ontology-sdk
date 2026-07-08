@@ -25,6 +25,7 @@ from graphio_sdk.ontology.ontology import OntologyNamespace
 from graphio_sdk.ontology.action_type import ActionTypeNamespace
 from graphio_sdk.ontology.automation import AutomationNamespace
 from graphio_sdk.data_pipline.meta_type import MetaTypeNamespace
+from graphio_sdk.data_pipline.raw_data import RawDataNamespace
 from graphio_sdk.knowledge_graph.knowledge_graph import KnowledgeGraphNamespace
 
 __all__ = [
@@ -40,5 +41,6 @@ __all__ = [
     "ActionTypeNamespace",
     "AutomationNamespace",
     "MetaTypeNamespace",
+    "RawDataNamespace",
     "KnowledgeGraphNamespace",
 ]
