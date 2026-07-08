@@ -11,6 +11,7 @@ from graphio_sdk.ontology.ontology import OntologyNamespace
 from graphio_sdk.ontology.action_type import ActionTypeNamespace
 from graphio_sdk.ontology.automation import AutomationNamespace
 from graphio_sdk.data_pipline.meta_type import MetaTypeNamespace
+from graphio_sdk.data_pipline.raw_data import RawDataNamespace
 from graphio_sdk.knowledge_graph.knowledge_graph import KnowledgeGraphNamespace
 
 
@@ -70,6 +71,7 @@ class GraphioClient:
         self.automation = AutomationNamespace(self)
         self.knowledge_graph = KnowledgeGraphNamespace(self)
         self.meta_type = MetaTypeNamespace(self)
+        self.raw_data = RawDataNamespace(self)
 
         # 가비지 컬렉션 시 자동 정리 등록
         self._register_cleanup()
