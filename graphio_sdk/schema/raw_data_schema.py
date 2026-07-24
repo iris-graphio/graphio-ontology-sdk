@@ -44,3 +44,20 @@ class RawDataSourceInfoDto(BaseModel):
     @classmethod
     def from_dict(cls, d: dict) -> "RawDataSourceInfoDto":
         return cls.model_validate(d)
+
+
+class RawDataListItemDto(BaseModel):
+    """원천 데이터 목록 항목 DTO (GET /raw-data)"""
+    model_config = ConfigDict(populate_by_name=True, extra="ignore", alias_generator=_to_camel)
+    raw_data_id: Optional[str] = Field(None, alias="rawDataId")
+    connect_type: Optional[str] = Field(None, alias="connectType")
+    connection_instance_name: Optional[str] = Field(None, alias="connectionInstanceName")
+    name: Optional[str] = None
+    data_type: Optional[str] = Field(None, alias="dataType")
+    collected_at: Optional[str] = Field(None, alias="collectedAt")
+    owner_id: Optional[str] = Field(None, alias="ownerId")
+    status: Optional[str] = None
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "RawDataListItemDto":
+        return cls.model_validate(d)
