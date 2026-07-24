@@ -3,6 +3,59 @@
 ## raw_data (RawDataNamespace)
 
 
+### client.raw_data.list(*, page=0, size=10, ...)
+
+- 원천 데이터(Raw Data) 목록 조회
+- 사용 api : GET /graphio/v1/raw-data
+- 반환 타입 : `list[RawDataListItemDto]` (`data` 배열만 파싱하여 반환)
+- Query params (Python snake_case → API camelCase)
+
+| Python | Query key | 기본값 | 설명 |
+|---|---|---|---|
+| `page` | `page` | `0` | 0-base 페이지 인덱스 |
+| `size` | `size` | `10` | 페이지 크기 (v1 기본 10) |
+| `connect_type` | `connectType` | — | `string[]` (반복 키). 예: `MINIO`, `POSTGRESQL` |
+| `data_type` | `dataType` | — | `FILE` \| `TABLE` |
+| `file_extensions` | `fileExtensions` | — | `string[]` (반복 키). 파일 확장자 |
+| `processing_status` | `processingStatus` | — | `string[]` (반복 키). `PROCESSING` \| `COMPLETE` \| `ERROR` |
+| `last_period` | `lastPeriod` | — | 기간. 예: `1d`, `2d`, `1m` |
+| `query` | `query` | — | 검색어 |
+
+- `None`인 필터는 query에서 생략됨
+- 사용 예시
+
+```
+from graphio_sdk import GraphioClient
+
+client = GraphioClient(base_url="http://your-server:8080")
+
+items = client.raw_data.list(
+    page=0,
+    size=10,
+    data_type="FILE",
+    connect_type=["MINIO", "POSTGRESQL"],
+    processing_status=["COMPLETE"],
+)
+
+for item in items:
+    print(item.raw_data_id, item.name, item.status, item.data_type)
+```
+
+- 응답 항목 필드
+
+| 필드 (Python) | 필드 (API) | 설명 |
+|---|---|---|
+| `raw_data_id` | `rawDataId` | 원천 데이터 ID |
+| `connect_type` | `connectType` | 연결 타입 |
+| `connection_instance_name` | `connectionInstanceName` | 연결 인스턴스명 |
+| `name` | `name` | 이름 |
+| `data_type` | `dataType` | 파일 확장자 문자열 (FILE/TABLE 아님) |
+| `collected_at` | `collectedAt` | 수집 시각 |
+| `owner_id` | `ownerId` | 소유자 ID |
+| `status` | `status` | `PROCESSING` \| `COMPLETE` \| `ERROR` |
+
+---
+
 ### client.raw_data.source_info(raw_data_id)
 
 - 원천 데이터(Raw Data)의 연결 정보 조회
@@ -130,7 +183,15 @@ if source.data_type == "file":
 
 ## raw_data_id 조회
 
-`source_info` 호출 전에 원천 데이터 ID가 필요하면 메타타입 API로 목록을 조회합니다.
+`source_info` 호출 전에 원천 데이터 ID가 필요하면 `raw_data.list()` 또는 메타타입 API로 목록을 조회합니다.
+
+```
+items = client.raw_data.list(page=0, size=10)
+for item in items:
+    print(item.raw_data_id, item.name, item.status)
+    source = client.raw_data.source_info(item.raw_data_id)
+    print(source.model_dump())
+```
 
 ```
 raw_list = client.meta_type.manage.raw_datas(meta_type_id, page=0, size=20)

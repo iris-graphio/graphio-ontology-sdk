@@ -3,6 +3,7 @@ API 응답 처리용 DTO (Data Transfer Object)
 """
 from .raw_data_schema import (
     RawDataConnectionDto,
+    RawDataListItemDto,
     RawDataLocationDto,
     RawDataSourceInfoDto,
 )
@@ -28,6 +29,7 @@ from .meta_type_schema import (
 
 __all__ = [
     "RawDataConnectionDto",
+    "RawDataListItemDto",
     "RawDataLocationDto",
     "RawDataSourceInfoDto",
     "MetaTypeKind",
