@@ -39,7 +39,7 @@ class GraphioClient:
     def __init__(
             self,
             base_url: Optional[str] = None,
-            timeout: Union[int, Tuple[int, int]] = 30,
+            timeout: Union[int, Tuple[int, int]] = 300,
     ):
         """
         클라이언트 초기화
@@ -47,8 +47,11 @@ class GraphioClient:
         Args:
             base_url: API 서버의 base URL (기본값: http://localhost:8080)
             timeout: 요청 타임아웃 시간(초) 또는 (연결 타임아웃, 읽기 타임아웃)
-                    튜플. 기본값 30초. int인 경우 (5초, timeout초)로 설정되어
-                    서버가 죽어있을 때 빠르게 실패합니다.
+                    튜플. 기본값 300초(5분) — Object CRUD가 대량 처리로 길어질 수 있어
+                    서버 측 제한(dag-service FUNCTION_TIMEOUT / rule HTTP 타임아웃)과 같은 값이다.
+                    int인 경우 (5초, timeout초)로 설정되어 서버가 죽어있을 때 빠르게 실패합니다.
+                    ActionType 수동 실행은 서버가 실행 종료까지 응답을 붙잡으므로 이 값이 아니라
+                    `action_type.EXECUTE_READ_TIMEOUT_SECONDS`를 씁니다.
         """
         # base_url이 None이면 환경변수에서 가져오기
         if base_url is None:
