@@ -451,9 +451,10 @@ def example_action_type_execute_by_name():
 
     try:
         result = client.action_type.execute_by_name(name=action_type_name)
-        print(f"✓ 실행 성공: {action_type_name}")
-        print(f"  - status: {result.get('status')}")
-        print(f"  - execution_id: {result.get('execution_id')}")
+        print(f"✓ 실행 요청 완료: {action_type_name}")
+        print(f"  - run_id: {result.get('run_id')}")
+        print(f"  - run_status: {result.get('run_status')}")  # SUCCESS/FAILED/PARTIAL_FAILED/TIMEOUT
+        print(f"  - completed: {result.get('completed')}")
     except Exception as e:
         print(f"✗ 에러: {e}")
 
